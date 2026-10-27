@@ -1,28 +1,28 @@
-# Deploy — Dashboard OPS (GitHub + Railway)
+# Deploy — Dashboard Geral (GitHub + Railway)
 
 Igual ao processo do Planeamento WIM / DSL. Sem base de dados — é só um serviço web.
 
 ## Passo 1 — Git local
 PowerShell na pasta do projecto:
 ```powershell
-cd "C:\Users\rpsilva\OneDrive - Harv 81\Documents\Claude\Projects\Dashboard OPS\Railway"
-.\deploy-setup.ps1
+cd "C:\Users\rpsilva\OneDrive - Harv 81\Documents\Claude\Projects\Dashboard Geral\Railway"
+.\deploy-setup.ps1   # só se ainda não existir .git (já existe: commit inicial feito a 27/10)
 ```
 > Erro de execution policy: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
 ## Passo 2 — Repositório GitHub
 1. https://github.com/new
-2. Nome: `dashboard-ops` · Visibility: **Private** · sem README/gitignore/license
+2. Owner `RPS-FA` · Nome: `Dashboard Geral` (o GitHub guarda como `Dashboard-Geral`) · Visibility: **Private** · sem README/gitignore/license
 3. Create repository
 
 ## Passo 3 — Ligar e enviar
 ```powershell
-git remote add origin https://github.com/<TEU_UTILIZADOR>/dashboard-ops.git
+# o remote já está configurado (git remote -v) — basta:
 git push -u origin main
 ```
 
 ## Passo 4 — Serviço web no Railway
-1. https://railway.app/new → **Deploy from GitHub repo** → `dashboard-ops`
+1. https://railway.app/new → **Deploy from GitHub repo** → `Dashboard-Geral`
 2. Railway detecta `package.json` + `nixpacks.toml` (Node 20) + `railway.toml`
 3. Build ~1 min. **Não precisa de Postgres.**
 4. (Opcional) Variables: `REFRESH_SEC=60`
@@ -41,7 +41,7 @@ Um chip vermelho = essa app não respondeu (o tooltip mostra o erro); o dashboar
 
 ## Actualizar
 ```powershell
-cd "C:\Users\rpsilva\OneDrive - Harv 81\Documents\Claude\Projects\Dashboard OPS\Railway"
+cd "C:\Users\rpsilva\OneDrive - Harv 81\Documents\Claude\Projects\Dashboard Geral\Railway"
 git add .
 git commit -m "Atualização"
 git push

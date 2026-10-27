@@ -1,4 +1,4 @@
-# Dashboard OPS — CSP1 · planeamentos
+# Dashboard Geral — CSP1 · operações
 
 Dashboard de leitura que agrega as 6 apps de planeamento do CSP1 (7 unidades) e mostra, num só ecrã:
 **o que cada máquina está a processar agora** (painel de máquinas, como os separadores "Monitor" do WIM e do VOCUS),

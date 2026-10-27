@@ -1,4 +1,4 @@
-# Railway configuration — Dashboard OPS (agregador de planeamentos CSP1)
+# Railway configuration — Dashboard Geral (agregador de planeamentos CSP1)
 
 [build]
 builder = "NIXPACKS"
