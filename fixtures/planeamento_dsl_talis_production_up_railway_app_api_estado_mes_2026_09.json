@@ -1,0 +1,249 @@
+{
+ "config": {
+  "mes": "2026-09",
+  "capacidade": {
+   "EM": 6000,
+   "EE1": 9000,
+   "EE2": 9000
+  }
+ },
+ "ops": [
+  {
+   "qv": "",
+   "obs": "ENCOMENDA",
+   "tipo": "normal",
+   "zona": null,
+   "ordem": 0,
+   "urgente": false,
+   "hora_inicio": null,
+   "inicio_modo": "auto",
+   "obs_producao": "",
+   "qtd_objetivo": null,
+   "inicio_manual": null,
+   "motivo_paragem": "Falta de matéria-prima",
+   "atraso_min": 0,
+   "data_limite": null,
+   "real_fim_data": "2026-09-21",
+   "real_fim_hora": "13:55",
+   "real_inicio_data": "2026-09-18",
+   "real_inicio_hora": "12:10",
+   "id": "op-mu10i1uc",
+   "op": "14400221",
+   "qtd": 79186,
+   "lote": "LT02376925",
+   "linha": "EE1",
+   "estado": "concluido_planeamento",
+   "cliente": "ENC 20005",
+   "dia_fixo": "2026-09-18",
+   "material": "BNCH-QV1-L01-27x240-0101-SDE-SDS",
+   "nr_pedido": "4400041755-10"
+  },
+  {
+   "qv": "",
+   "obs": "",
+   "tipo": "normal",
+   "zona": null,
+   "ordem": 0,
+   "urgente": false,
+   "hora_inicio": null,
+   "inicio_modo": "auto",
+   "obs_producao": "Reprocesso 25K",
+   "qtd_objetivo": 70000,
+   "inicio_manual": null,
+   "motivo_paragem": "Outro",
+   "atraso_min": 360,
+   "data_limite": "2026-10-28",
+   "real_fim_data": null,
+   "real_fim_hora": null,
+   "real_inicio_data": "2026-10-26",
+   "real_inicio_hora": "08:10",
+   "id": "op-teste-1",
+   "op": "TESTE-T01",
+   "qtd": 134525,
+   "lote": "LT-TESTE",
+   "linha": "EE2",
+   "estado": "em_processo",
+   "cliente": "ENC 18161",
+   "dia_fixo": "2026-10-26",
+   "material": "TESTE BCCH-QV2-205-27X225-C1/2-SDE-SDS",
+   "nr_pedido": "4400041850-10"
+  },
+  {
+   "qv": "",
+   "obs": "",
+   "tipo": "normal",
+   "zona": null,
+   "ordem": 0,
+   "urgente": false,
+   "hora_inicio": null,
+   "inicio_modo": "auto",
+   "obs_producao": "",
+   "qtd_objetivo": null,
+   "inicio_manual": null,
+   "motivo_paragem": "",
+   "atraso_min": 0,
+   "data_limite": null,
+   "real_fim_data": "2026-10-25",
+   "real_fim_hora": "16:40",
+   "real_inicio_data": "2026-10-25",
+   "real_inicio_hora": "09:00",
+   "id": "op-teste-2",
+   "op": "TESTE-T02",
+   "qtd": 99746,
+   "lote": "LT-TESTE-2",
+   "linha": "EM",
+   "estado": "entregue_logistica",
+   "cliente": "ENC 10946",
+   "dia_fixo": "2026-10-25",
+   "material": "TESTE BNBO-QV2-L01-27X193-1003",
+   "nr_pedido": "4400042021-10"
+  },
+  {
+   "qv": "",
+   "obs": "",
+   "tipo": "normal",
+   "zona": null,
+   "ordem": 0,
+   "urgente": false,
+   "hora_inicio": null,
+   "inicio_modo": "auto",
+   "obs_producao": "",
+   "qtd_objetivo": 2300,
+   "inicio_manual": null,
+   "motivo_paragem": "",
+   "atraso_min": 0,
+   "data_limite": "2026-10-25",
+   "real_fim_data": null,
+   "real_fim_hora": null,
+   "real_inicio_data": null,
+   "real_inicio_hora": null,
+   "id": "op-teste-3",
+   "op": "TESTE-T03",
+   "qtd": 5300,
+   "lote": "LAV 03/11",
+   "linha": "EM",
+   "estado": "aberto",
+   "cliente": "ENC 14980",
+   "dia_fixo": "2026-10-22",
+   "material": "TESTE NCO-QV2-L01-35X220/17-1010",
+   "nr_pedido": "4400042178-10"
+  },
+  {
+   "qv": "",
+   "obs": "",
+   "tipo": "normal",
+   "zona": null,
+   "ordem": 0,
+   "urgente": false,
+   "hora_inicio": null,
+   "inicio_modo": "auto",
+   "obs_producao": "",
+   "qtd_objetivo": 51500,
+   "inicio_manual": null,
+   "motivo_paragem": "",
+   "atraso_min": 0,
+   "data_limite": "2026-10-31",
+   "real_fim_data": null,
+   "real_fim_hora": null,
+   "real_inicio_data": null,
+   "real_inicio_hora": null,
+   "id": "op-teste-4",
+   "op": "TESTE-T04",
+   "qtd": 42635,
+   "lote": "LT-TESTE-4",
+   "linha": "EE1",
+   "estado": "liberada",
+   "cliente": "ENC 12553",
+   "dia_fixo": "2026-10-26",
+   "material": "TESTE BNBO-QV1-L01-27X225-1010-SDE-SDS",
+   "nr_pedido": "4400041925-10"
+  },
+  {
+   "qv": "",
+   "obs": "",
+   "tipo": "normal",
+   "zona": null,
+   "ordem": 0,
+   "urgente": false,
+   "hora_inicio": null,
+   "inicio_modo": "auto",
+   "obs_producao": "",
+   "qtd_objetivo": null,
+   "inicio_manual": null,
+   "motivo_paragem": "",
+   "atraso_min": 0,
+   "data_limite": null,
+   "real_fim_data": null,
+   "real_fim_hora": null,
+   "real_inicio_data": null,
+   "real_inicio_hora": null,
+   "id": "op-teste-5",
+   "op": "TESTE-T05",
+   "qtd": 3960,
+   "lote": "",
+   "linha": "EM",
+   "estado": "espera_job",
+   "cliente": "ENC 15411",
+   "dia_fixo": "2026-10-27",
+   "material": "TESTE BNBO-QV1-L01-24X165-1010-SDE-SDS",
+   "nr_pedido": ""
+  }
+ ],
+ "plano": {
+  "buffer": [],
+  "kanban": [],
+  "linhas": {
+   "EE1": [
+    {
+     "id": "op-mu10i1uc",
+     "op": "14400221",
+     "data_inicio": "2026-09-18T08:00:00.000Z",
+     "data_fim": "2026-09-18T16:00:00.000Z"
+    },
+    {
+     "id": "op-teste-4",
+     "op": "TESTE-T04",
+     "data_inicio": "2026-10-26T08:00:00.000Z",
+     "data_fim": "2026-10-26T16:00:00.000Z"
+    }
+   ],
+   "EE2": [],
+   "EM": []
+  },
+  "dias": []
+ },
+ "rev": "2026-10-26T14:19:23.035Z",
+ "referencias": {
+  "estados": [
+   {
+    "id": "aberto",
+    "label": "Aberto"
+   },
+   {
+    "id": "liberada",
+    "label": "Liberada"
+   },
+   {
+    "id": "entregue_logistica",
+    "label": "Entregue Logística"
+   },
+   {
+    "id": "em_processo",
+    "label": "Em Processo"
+   },
+   {
+    "id": "terminado_linha",
+    "label": "Terminado em Linha"
+   },
+   {
+    "id": "espera_job",
+    "label": "Espera JOB"
+   },
+   {
+    "id": "concluido_planeamento",
+    "label": "Concluído Planeamento"
+   }
+  ]
+ },
+ "protegido": true
+}

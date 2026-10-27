@@ -1,0 +1,104 @@
+{
+ "settings": {
+  "maquinas": [
+   {
+    "nome": "PURECORK 2",
+    "slots_por_dia": 26
+   },
+   {
+    "nome": "PURECORK 3",
+    "slots_por_dia": 26
+   }
+  ]
+ },
+ "ops": [
+  {
+   "id": 297,
+   "op": "11103643",
+   "lote": "LT02386299",
+   "material_codigo": "104858",
+   "material_descricao": "BNCH-QV0-NAT-26X265-1010",
+   "calibre": "26X265",
+   "qv": "1010",
+   "qc": 64.7,
+   "cliente": "20005",
+   "obs": "COND.PUREC - REPETIR GC",
+   "observacoes": "COND.PUREC - REPETIR GC",
+   "lote_fornecedor": "",
+   "contagens": true,
+   "contagens_k": 64.7,
+   "carros_ids": "9,71,68",
+   "lote_final": true,
+   "prioridade_tag": "",
+   "maquina": "PURECORK 2",
+   "dayKey": "2026-10-20",
+   "weekKey": ""
+  },
+  {
+   "id": 9301,
+   "op": "TESTE-P01",
+   "lote": "LT-TESTE-1",
+   "material_codigo": "100510",
+   "material_descricao": "TESTE N-QV0-NAT-49X240-0101-SDE-SDS",
+   "calibre": "49X240",
+   "qv": "0101",
+   "qc": 84.593,
+   "cliente": "",
+   "obs": "",
+   "observacoes": "",
+   "lote_fornecedor": "",
+   "contagens": true,
+   "contagens_k": 84.593,
+   "carros_ids": "27,23",
+   "lote_final": false,
+   "prioridade_tag": "",
+   "maquina": "PURECORK 2",
+   "dayKey": "2026-10-26",
+   "weekKey": ""
+  },
+  {
+   "id": 9302,
+   "op": "TESTE-P02",
+   "lote": "LT-TESTE-2",
+   "material_codigo": "100457",
+   "material_descricao": "TESTE N-QV0-NAT-45X240-0101-SDE-SDS",
+   "calibre": "45X240",
+   "qv": "0101",
+   "qc": 119.318,
+   "cliente": "ENC 11908",
+   "obs": "",
+   "observacoes": "",
+   "lote_fornecedor": "",
+   "contagens": false,
+   "contagens_k": 0,
+   "carros_ids": "20,10",
+   "lote_final": false,
+   "prioridade_tag": "BULK 2",
+   "maquina": "PURECORK 2",
+   "dayKey": "2026-10-24",
+   "weekKey": ""
+  },
+  {
+   "id": 9303,
+   "op": "TESTE-P03",
+   "lote": "LT-TESTE-3",
+   "material_codigo": "100559",
+   "material_descricao": "TESTE N-QV0-NAT-54X240-1111-SDE-SDS",
+   "calibre": "54X240",
+   "qv": "1111",
+   "qc": 25.755,
+   "cliente": "",
+   "obs": "",
+   "observacoes": "",
+   "lote_fornecedor": "",
+   "contagens": false,
+   "contagens_k": 0,
+   "carros_ids": "10/20",
+   "lote_final": false,
+   "prioridade_tag": "",
+   "maquina": "PURECORK 2",
+   "dayKey": "2026-10-28",
+   "weekKey": ""
+  }
+ ]
+}

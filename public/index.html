@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operações CSP1 · Dashboard</title>
+<link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+<header class="topo">
+  <div class="topo-esq">
+    <h1>Operações CSP1 <span class="sub">· planeamentos</span></h1>
+    <div class="meta" id="meta">a ligar…</div>
+  </div>
+  <div class="fontes" id="fontes" aria-label="Estado das ligações às apps"></div>
+  <div class="topo-dir">
+    <button id="btnAtualizar" class="btn" title="Forçar leitura das apps">↻ Actualizar</button>
+    <button id="btnTv" class="btn" title="Modo ecrã (só indicadores)">▣ Modo TV</button>
+  </div>
+</header>
+
+<main id="main" class="a-carregar">
+  <section class="kpis" id="kpis" aria-label="Indicadores globais"></section>
+
+  <section class="maquinas-sec" aria-label="Painel de máquinas">
+    <div class="sec-cab"><h2>Máquinas · agora</h2><span class="legenda-maq"><i class="lm em_processo"></i>a processar <i class="lm manutencao"></i>manutenção <i class="lm planeada"></i>com fila, parada <i class="lm sem_plano"></i>sem plano</span></div>
+    <div id="maquinas" class="maquinas"></div>
+  </section>
+
+  <section class="unidades-sec">
+    <div class="sec-cab"><h2>Unidades · estado das ordens</h2></div>
+    <div class="unidades" id="unidades" aria-label="Unidades"></div>
+  </section>
+
+  <section class="tabela-sec" id="tabelaSec">
+    <div class="filtros" id="filtros">
+      <label>Unidade <select id="fUnidade"><option value="">Todas</option></select></label>
+      <label>Estado <select id="fEstado"><option value="">Todos (activas)</option></select></label>
+      <label class="chk"><input type="checkbox" id="fAtrasos"> Só atrasos</label>
+      <label class="chk"><input type="checkbox" id="fHoje"> Só hoje</label>
+      <label class="chk"><input type="checkbox" id="fFechadas"> Incluir fechadas (7 dias)</label>
+      <label class="pesq">Pesquisar <input type="search" id="fPesq" placeholder="OP, lote, cliente, produto…"></label>
+      <span class="contagem" id="contagem"></span>
+      <button id="btnCsv" class="btn btn-sec" title="Exportar a lista filtrada para CSV (Excel)">⬇ CSV</button>
+    </div>
+    <div class="tabela-wrap">
+      <table id="tabela">
+        <thead><tr>
+          <th data-k="unidade">Unidade</th>
+          <th data-k="op">OP · lote</th>
+          <th data-k="cliente">Cliente</th>
+          <th data-k="produto">Produto</th>
+          <th data-k="maquina">Máq. / linha</th>
+          <th data-k="estado">Estado</th>
+          <th data-k="data_plano">Plano</th>
+          <th data-k="data_limite">Limite</th>
+          <th data-k="atraso" class="num">Atraso</th>
+          <th data-k="atraso_prod_min" class="num">Paragem</th>
+          <th data-k="real_inicio">Real (início → fim)</th>
+          <th data-k="qtd" class="num">Qtd (un.)</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="rodape">
+    <p><strong>Regras.</strong> Ciclo das ordens: Em espera (Kanban/Buffer) → Aberto → Liberada → <em>Na linha</em> (= "Entregue Logística": material entregue à linha, ainda sem início) → <em>Em processo</em> → Terminada → <em>Espera JOB</em> (terminada, à espera do JOB SAP) → Fechada ("Concluída Planeamento").
+    <em>Em processo</em> = estado "Em Processo" na app de origem. PureCork não regista execução: só "LOTE FINAL" (→ fechada) e "CONTADO"; o resto é "planeado".
+    <em>Atraso prazo</em> = data limite do cliente ultrapassada e ordem não terminada (só VOCUS, DS100 e DSL Talis registam data limite).
+    <em>Atraso plano</em> = dia (ou fim) planeado anterior a hoje e ordem não terminada; DS100 planeia à semana (conta a partir da segunda-feira seguinte); VOCUS é uma fila por máquina sem data — não se aplica.
+    <em>Paragem</em> = minutos de atraso/paragem registados pela produção (últimos 7 dias nos indicadores).
+    Ciclos de limpeza/manutenção (WIM) aparecem nas máquinas mas não contam nos indicadores. Fuso: Europe/Lisbon. O dashboard só lê as apps — não altera nada.</p>
+  </footer>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script src="app.js?v=1"></script>
+</body>
+</html>

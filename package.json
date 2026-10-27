@@ -1,0 +1,20 @@
+{
+  "name": "dashboard-ops",
+  "version": "1.0.0",
+  "description": "Dashboard de operações CSP1 — agrega as apps de planeamento (WIM, PlannerCork VOCUS/DS100, PureCork, Densidades, DSL, DSL Talis) — Cork Supply / Harv 81 Group",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/normalizar.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "compression": "^1.8.1",
+    "express": "^4.22.2"
+  },
+  "private": true,
+  "author": "Cork Supply",
+  "license": "UNLICENSED"
+}
