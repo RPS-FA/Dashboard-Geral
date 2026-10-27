@@ -3,7 +3,7 @@
 // _calcInicioP_date/_calcInicioP, _calcFimP_date/_calcFimP = janela planeada calculada pela app (usamos primeiro);
 // dataPlano = dia planeado introduzido (formato DD/MM/YYYY) como recurso;
 // dataInicioR/hInicioR, dataFimR/hFimR e realPorDia = reais; tempoAtraso = paragem registada;
-// maquina = 'Maq 1 - Linha 9' | 'Maq 3 - Linha 10' | 'BUFFER' (ainda não planeada -> estado "Em espera", sem máquina).
+// maquina = 'Maq 1 - Linha 9' | 'Maq 3 - Linha 10' | 'BUFFER' / 'KANBAN' (ainda não planeada -> estado "Em espera", sem máquina).
 // Máquinas: settings.turnosPorMaquina / settings.capacidades.
 // ============================================================
 'use strict';
@@ -14,11 +14,11 @@ async function carregar(fonte, http) {
   const st = await http(fonte.url + '/api/state');
   const ops = Array.isArray(st.ops) ? st.ops : [];
   const s = st.settings || {};
-  const maquinas = Object.keys(s.turnosPorMaquina || s.capacidades || {}).filter(m => !/buffer/i.test(m));
+  const maquinas = Object.keys(s.turnosPorMaquina || s.capacidades || {}).filter(m => !/buffer|kanban/i.test(m));
   const out = [];
   for (const o of ops) {
     let estado = E.normalizar(o.estado);
-    const buffer = /buffer/i.test(String(o.maquina || ''));
+    const buffer = /buffer|kanban/i.test(String(o.maquina || ''));
     if (buffer && !E.terminal(estado) && estado !== 'em_processo') estado = 'pre';
     // Reais: só contam registos COM hora. A app pré-cria entradas em realPorDia (e dataInicioR/dataFimR)
     // com o dia do plano e horas vazias — datas sem hora não são execução real.
@@ -37,7 +37,7 @@ async function carregar(fonte, http) {
       qtd: U.num(o.qtdEntrada),
       maquina: buffer ? null : (U.limpa(o.maquina) || null), fase: null,
       fila: U.num(o.sortIdx),
-      estado, estado_origem: U.limpa(o.estado) + (buffer ? ' (Buffer)' : ''), estado_derivado: false,
+      estado, estado_origem: U.limpa(o.estado) + (buffer ? ` (${U.limpa(o.maquina)})` : ''), estado_derivado: false,
       data_plano: U.paraData(o._calcInicioP_date) || U.paraData(o.dataPlano),
       data_fim_plano: U.paraData(o._calcFimP_date) || U.paraData(o.dataPlano),
       semana_plano: o.weekKey || null, plano_granularidade: 'dia',

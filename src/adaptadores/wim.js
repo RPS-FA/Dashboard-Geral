@@ -35,11 +35,12 @@ async function carregar(fonte, http) {
   const st = await http(fonte.url + '/api/state');
   const ops = Array.isArray(st.ops) ? st.ops : [];
   const sections = (st.settings && st.settings.sections) || {};
-  // Make-up: a app não atribui máquina (m_maq sempre vazio) — a secção é tratada como uma única "máquina".
-  const usaMaqM = ops.some(o => U.limpa(o.m_maq));
+  // Make-up: a app não atribui máquina às ordens (m_maq vazio; só os ciclos de limpeza/formação têm "Maquina 1").
+  // A secção é tratada como uma "máquina" única ("Make-up"); máquinas de make-up só aparecem se alguma ordem as usar.
+  const maqMUsadas = [...new Set(ops.map(o => U.limpa(o.m_maq)).filter(Boolean))];
   const maquinas = [];
   for (const f of FASES) {
-    const lista = (f.sec === 'M' && !usaMaqM) ? ['Make-up'] : ((sections[f.sec] || {}).maqs || []);
+    const lista = f.sec === 'M' ? ['Make-up', ...maqMUsadas] : ((sections[f.sec] || {}).maqs || []);
     for (const m of lista) if (!maquinas.includes(m)) maquinas.push(m);
   }
   const maqI = ((sections.I || {}).maqs || [])[0] || 'INNOCORK';
@@ -54,10 +55,10 @@ async function carregar(fonte, http) {
     const p = actual.p;
     const r = reais(o, p);
     const atraso = FASES.reduce((s, f) => s + U.paraMinutos(o[f.p + '_atraso']), 0);
-    const manut = !!(o.manut || o.cleanTpl) || /limpeza|manuten/i.test(String(o.op || o.nome || ''));
+    const manut = !!(o.manut || o.cleanTpl) || /limpeza|manuten|forma[cç]/i.test(String(o.op || o.nome || ''));
     let maquina = U.limpa(o[p + '_maq']) || null;
-    if (!maquina && p === 'i') maquina = maqI;                 // Innocork só tem uma máquina
-    if (!maquina && p === 'm' && !usaMaqM) maquina = 'Make-up'; // Make-up sem máquinas atribuídas
+    if (!maquina && p === 'i') maquina = maqI;      // Innocork só tem uma máquina
+    if (!maquina && p === 'm') maquina = 'Make-up';  // Make-up sem máquina atribuída
     const dataPlano = dataFase(o, p) || (p === 'm' ? U.paraData(o.m_data) : null) || U.paraData(o.diaPlano);
     out.push({
       fonte: fonte.id, unidade: fonte.unidade,
@@ -92,7 +93,7 @@ async function carregar(fonte, http) {
       if (!dp) continue;
       let maq = U.limpa(o[f.p + '_maq']) || null;
       if (!maq && f.p === 'i') maq = maqI;
-      if (!maq && f.p === 'm' && !usaMaqM) maq = 'Make-up';
+      if (!maq && f.p === 'm') maq = 'Make-up';
       if (!maq) continue;
       out.push({
         fonte: fonte.id, unidade: fonte.unidade, id: `${fonte.id}-${o.id}-${f.p}`, fase_futura: true,
