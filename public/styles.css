@@ -82,6 +82,29 @@ main.a-carregar section { visibility: hidden; }
 .lm { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
 .lm.em_processo { background: var(--em-processo); } .lm.manutencao { background: #6250d6; } .lm.planeada { background: var(--e-liberada); } .lm.sem_plano { background: var(--ink-3); }
 
+/* excepções */
+.alertas-sec { margin-bottom: 20px; }
+.alertas-sec .sec-cab .btn-sec { margin-left: auto; }
+.alertas { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.exc { background: var(--superficie); border: 1px solid var(--borda); border-radius: 10px; padding: 10px 12px; box-shadow: var(--sombra); border-left: 4px solid var(--aviso); }
+.exc.critico { border-left-color: var(--critico); }
+.exc.serio { border-left-color: var(--serio); }
+.exc .acab { display: flex; align-items: baseline; gap: 8px; }
+.exc .acab b { font-size: 13px; }
+.exc .acab .n { font-size: 20px; font-weight: 700; margin-left: auto; }
+.exc.critico .acab .n { color: var(--critico); } .exc.serio .acab .n { color: var(--serio); } .exc.aviso .acab .n { color: var(--ink-2); }
+.exc .adescr { font-size: 11.5px; color: var(--ink-3); margin: 2px 0 6px; }
+.exc ul { list-style: none; margin: 0; padding: 0; }
+.exc li { font-size: 12.5px; padding: 4px 0; border-top: 1px solid var(--linha); cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
+.exc li:hover { color: var(--realce); }
+.exc li .au { color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+.exc li .aop { font-weight: 600; }
+.exc li .adet { grid-column: 1 / -1; color: var(--ink-2); font-size: 11.5px; }
+.exc .amais { font-size: 11.5px; color: var(--ink-3); padding-top: 4px; }
+.alertas .vazio { color: var(--bom-ink); font-size: 13px; padding: 6px 0; }
+.sel-unidade { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.sel-unidade select { background: var(--superficie); border: 1px solid var(--borda); border-radius: 8px; padding: 6px 8px; }
+
 /* painel de máquinas */
 .maquinas { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
 .grupo-maq { display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: start; }
@@ -107,6 +130,8 @@ main.a-carregar section { visibility: hidden; }
 .maq .mdet { color: var(--ink-2); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .maq .mtempo { font-size: 11.5px; color: var(--ink-2); }
 .maq .mtempo b { color: var(--em-processo); }
+.maq .mtempo .fimp { color: var(--ink-3); }
+.maq .mtempo .fimp.passou { color: var(--critico); font-weight: 700; }
 .maq .mprox { font-size: 11.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: auto; padding-top: 4px; border-top: 1px solid var(--linha); }
 .maq .mprox b { color: var(--ink-2); font-weight: 600; }
 .maq .mrod { display: flex; gap: 8px; font-size: 11px; color: var(--ink-3); }
@@ -194,8 +219,20 @@ tr.plano td:first-child { box-shadow: inset 3px 0 0 var(--serio); }
 
 /* ---- modo TV (ecrã fixo: KPIs + painel de máquinas; sem tabela nem cartões) ---- */
 body.tv .tabela-sec, body.tv .rodape, body.tv .topo-dir #btnAtualizar, body.tv .legenda, body.tv .nota, body.tv .unidades-sec { display: none; }
-/* TV: grelha única de máquinas (sem linhas por unidade) — 28 máquinas cabem num 1080p */
+/* TV: grelha única de máquinas (sem linhas por unidade) — 30 máquinas cabem num 1080p */
+body.tv .alertas { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+body.tv .exc li:nth-child(n+3) { display: none; }
+body.tv .exc .adescr, body.tv #btnAlertas { display: none; }
 body.tv .maquinas { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 8px; }
+/* TV de uma unidade: tiles maiores */
+body.tv.uma-unidade .maquinas { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+body.tv.uma-unidade .maq { font-size: 15px; padding: 12px 14px; min-height: 150px; }
+body.tv.uma-unidade .maq .mcab b { font-size: 19px; }
+body.tv.uma-unidade .maq .mop b { font-size: 17px; }
+body.tv.uma-unidade .maq .mdet, body.tv.uma-unidade .maq .mtempo { font-size: 14px; white-space: normal; }
+body.tv.uma-unidade .maq .mprox { display: block; font-size: 13.5px; }
+body.tv.uma-unidade .maq .mrod { font-size: 13px; }
+body.tv.uma-unidade .kpi .val { font-size: 64px; }
 body.tv .grupo-maq, body.tv .grupo-maq .tiles { display: contents; }
 body.tv .grupo-maq .gcab { display: none; }
 body.tv .maq { min-height: 0; padding: 8px 10px 7px; font-size: 12px; }

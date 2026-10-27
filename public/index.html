@@ -14,6 +14,7 @@
   </div>
   <div class="fontes" id="fontes" aria-label="Estado das ligações às apps"></div>
   <div class="topo-dir">
+    <label class="sel-unidade" title="Ecrã de uma só unidade (para TV na secção)">Ecrã <select id="selUnidade"><option value="">Todas as unidades</option></select></label>
     <button id="btnAtualizar" class="btn" title="Forçar leitura das apps">↻ Actualizar</button>
     <button id="btnTv" class="btn" title="Modo ecrã (só indicadores)">▣ Modo TV</button>
   </div>
@@ -21,6 +22,11 @@
 
 <main id="main" class="a-carregar">
   <section class="kpis" id="kpis" aria-label="Indicadores globais"></section>
+
+  <section class="alertas-sec" id="alertasSec" aria-label="Excepções">
+    <div class="sec-cab"><h2>Atenção</h2><span class="nota" id="alertasResumo"></span><button id="btnAlertas" class="btn btn-sec" type="button">mostrar tudo</button></div>
+    <div id="alertas" class="alertas"></div>
+  </section>
 
   <section class="maquinas-sec" aria-label="Painel de máquinas">
     <div class="sec-cab"><h2>Máquinas · agora</h2><span class="legenda-maq"><i class="lm em_processo"></i>a processar <i class="lm manutencao"></i>manutenção <i class="lm planeada"></i>com fila, parada <i class="lm sem_plano"></i>sem plano</span></div>

@@ -24,6 +24,7 @@ const ADAPTADORES = {
 const REFRESH_SEC = Math.max(20, parseInt(process.env.REFRESH_SEC || '60', 10) || 60);
 const TIMEOUT_MS = Math.max(3000, parseInt(process.env.TIMEOUT_MS || '12000', 10) || 12000);
 const FIXTURES_DIR = process.env.FIXTURES_DIR || ''; // modo de teste: lê JSON locais em vez das apps
+const LIMIARES = I.limiares(process.env);           // ALERTA_PROCESSO_H, ALERTA_PROCESSO_H_FILA, ALERTA_FIM_REGISTADO_H, ALERTA_PLANO_DIAS, ALERTA_JOB_DIAS
 
 // Estado em memória por fonte
 const cache = {}; // id -> { ordens:[], ok, erro, ultima_ok, ultima_tentativa, ms, n, ts_fonte }
@@ -104,11 +105,13 @@ function resumo() {
     });
   }
   const fontesOk = unidades.filter(u => u.fonte.ok).length;
+  const alertas = I.alertas(ordens, unidades, hoje, agora, LIMIARES);
+  for (const u of unidades) u.alertas_n = alertas.grupos.reduce((s, g) => s + g.itens.filter(a => a.unidade === u.unidade).length, 0);
   return {
     gerado: agora.toISOString(), hoje, semana, refresh_seg: REFRESH_SEC, ultima_agregacao: ultimaAgregacao,
     fontes_ok: fontesOk, fontes_total: unidades.length,
     maquinas_total: maqTotal, maquinas_em_processo: maqEmProcesso,
-    total, unidades,
+    total, unidades, alertas,
     estados: E.LABEL,
     ordens: ordens.sort((a, b) => (b.atraso_prazo_dias - a.atraso_prazo_dias) || (b.atraso_plano_dias - a.atraso_plano_dias) || Number(b.em_curso) - Number(a.em_curso) || String(a.data_plano || '9999').localeCompare(String(b.data_plano || '9999'))),
   };

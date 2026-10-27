@@ -42,8 +42,82 @@ function enriquecer(o, hoje, semana, limite7, agora) {
   d.ativa = d.na_fila && !o.fase_futura;          // conta para os KPIs e para a tabela
   if (o.fase_futura) { d.em_curso = false; d.atraso_prazo = d.atraso_plano = d.hoje = d.semana = d.feita_hoje = d.fechada_7d = false; d.atraso_prazo_dias = d.atraso_plano_dias = 0; d.paragem_7d = 0; d.hoje = !o.manutencao && (o.data_plano === hoje); }
   d.decorrido_min = (d.em_curso && o.real_inicio && o.real_inicio.length > 10 && agora) ? U.minutosDesde(o.real_inicio, agora) : null;
+  // Fim planeado (data + hora quando a app a calcula: Densidades, DSL Talis) e atraso da execução em curso
+  d.fim_plano_dt = o.data_fim_plano ? (o.hora_plano_fim ? `${o.data_fim_plano} ${o.hora_plano_fim}` : o.data_fim_plano) : null;
+  d.atraso_fim_min = null;
+  if (d.em_curso && d.fim_plano_dt && agora && gran === 'dia') {
+    const ref = d.fim_plano_dt.length > 10 ? d.fim_plano_dt : `${d.fim_plano_dt} 23:59`; // só data: conta a partir do fim desse dia
+    const m = U.minutosDesde(ref, agora);
+    d.atraso_fim_min = m > 0 ? m : 0;
+  }
+  // Fim real registado mas estado ainda "em processo" (há quanto tempo)
+  d.fim_registado_min = (d.em_curso && o.real_fim && o.real_fim.length > 10 && agora) ? U.minutosDesde(o.real_fim, agora) : null;
   return d;
 }
+
+// ------------------------------------------------------------
+// Alertas (painel de excepções) — limiares configuráveis por variáveis de ambiente
+// ------------------------------------------------------------
+const LIMIARES = {
+  processo_h: 24,        // em processo há mais de N h sem fim registado (unidades com plano ao dia)
+  processo_h_fila: 96,   // idem para unidades em fila (VOCUS: ordens de 100k+ un. correm vários dias)
+  fim_registado_h: 12,   // fim real registado há mais de N h e estado ainda "em processo"
+  plano_dias: 14,        // ordem activa com dia planeado há mais de N dias
+  job_dias: 7,           // "Espera JOB" há mais de N dias (fim real, ou dia planeado se não houver)
+};
+function limiares(env) {
+  const e = env || {};
+  const n = (k, d) => { const v = parseFloat(e[k]); return isFinite(v) && v > 0 ? v : d; };
+  return { processo_h: n('ALERTA_PROCESSO_H', LIMIARES.processo_h), processo_h_fila: n('ALERTA_PROCESSO_H_FILA', LIMIARES.processo_h_fila), fim_registado_h: n('ALERTA_FIM_REGISTADO_H', LIMIARES.fim_registado_h), plano_dias: n('ALERTA_PLANO_DIAS', LIMIARES.plano_dias), job_dias: n('ALERTA_JOB_DIAS', LIMIARES.job_dias) };
+}
+
+const TIPOS_ALERTA = {
+  fonte_falha:        { ordem: 0, nivel: 'critico', titulo: 'App sem ligação', descr: 'a última leitura falhou; a mostrar a última leitura boa, se existir' },
+  fim_plano:          { ordem: 1, nivel: 'serio',   titulo: 'Em processo além do fim planeado', descr: 'a app de origem calculou um fim para esta ordem e já passou' },
+  fim_registado:      { ordem: 2, nivel: 'serio',   titulo: 'Terminada mas não fechada', descr: 'tem fim real registado há horas e continua "Em Processo" na app — alguém tem de mudar o estado' },
+  processo_longo:     { ordem: 3, nivel: 'aviso',   titulo: 'Em processo há demasiado tempo', descr: 'sem fim registado; ou é uma ordem longa ou ficou esquecida' },
+  prazo:              { ordem: 4, nivel: 'critico', titulo: 'Data limite do cliente ultrapassada', descr: 'ordem não terminada com data limite no passado' },
+  sem_maquina:        { ordem: 5, nivel: 'aviso',   titulo: 'Pronta mas sem máquina', descr: 'liberada / na linha / em processo sem máquina atribuída na app' },
+  plano_antigo:       { ordem: 6, nivel: 'aviso',   titulo: 'Plano antigo por fechar', descr: 'ordem activa com dia planeado há mais de N dias — provavelmente lixo de planeamento' },
+  job_antigo:         { ordem: 7, nivel: 'aviso',   titulo: 'Espera JOB há demasiado tempo', descr: 'terminada, à espera do JOB SAP há mais de N dias — backlog administrativo' },
+};
+
+/** Gera a lista de alertas a partir das ordens enriquecidas de TODAS as unidades e do estado das fontes. */
+function alertas(ordens, unidades, hoje, agora, lim) {
+  lim = lim || LIMIARES;
+  const out = [];
+  const add = (tipo, o, detalhe, valor) => out.push({ tipo, nivel: TIPOS_ALERTA[tipo].nivel, unidade: o.unidade, maquina: o.maquina || null, op: o.op || o.ref || '', cliente: o.cliente || '', detalhe, valor: valor ?? null, id: o.id });
+  for (const u of (unidades || [])) if (u.fonte && !u.fonte.ok) out.push({ tipo: 'fonte_falha', nivel: 'critico', unidade: u.unidade, maquina: null, op: '', cliente: '', detalhe: `${u.fonte.erro || 'erro desconhecido'}${u.fonte.ultima_ok ? ' · última leitura boa ' + u.fonte.ultima_ok.slice(0, 16).replace('T', ' ') : ''}`, valor: u.fonte.idade_min, id: 'fonte-' + u.id });
+  const limPlano = U.addDias(hoje, -lim.plano_dias);
+  const limJob = U.addDias(hoje, -lim.job_dias);
+  for (const o of ordens) {
+    if (o.fase_futura || o.manutencao) continue;
+    const gran = o.plano_granularidade || 'dia';
+    if (o.em_curso) {
+      if (o.atraso_fim_min > 0) add('fim_plano', o, `fim planeado ${o.fim_plano_dt} · ultrapassado há ${hhmm(o.atraso_fim_min)}`, o.atraso_fim_min);
+      if (o.fim_registado_min != null && o.fim_registado_min > lim.fim_registado_h * 60) add('fim_registado', o, `fim real ${o.real_fim} · há ${hhmm(o.fim_registado_min)}`, o.fim_registado_min);
+      else if (o.decorrido_min != null) {
+        const h = gran === 'fila' ? lim.processo_h_fila : lim.processo_h;
+        if (o.decorrido_min > h * 60) add('processo_longo', o, `início ${o.real_inicio} · há ${hhmm(o.decorrido_min)} (limiar ${h} h)`, o.decorrido_min);
+      }
+      if (!o.maquina) add('sem_maquina', o, 'em processo sem máquina atribuída');
+    } else if (o.ativa) {
+      if (!o.maquina && (o.estado === 'liberada' || o.estado === 'entregue_log') && o.data_plano && o.data_plano <= hoje) add('sem_maquina', o, `${o.estado_origem} · plano ${o.data_plano}`);
+      if (o.data_plano && o.data_plano < limPlano && gran === 'dia') add('plano_antigo', o, `${o.estado_origem} · plano ${o.data_plano} (${U.difDias(o.data_plano, hoje)} dias)`, U.difDias(o.data_plano, hoje));
+    }
+    if (o.atraso_prazo) add('prazo', o, `limite ${o.data_limite} · ${o.atraso_prazo_dias} dias${o.em_curso ? ' · em processo' : ''}`, o.atraso_prazo_dias);
+    if (o.estado === 'espera_job') {
+      const ref = (o.real_fim || o.data_plano || '').slice(0, 10);
+      if (ref && ref < limJob) add('job_antigo', o, `terminada ${ref} · ${U.difDias(ref, hoje)} dias à espera de JOB`, U.difDias(ref, hoje));
+    }
+  }
+  const ordemNivel = { critico: 0, serio: 1, aviso: 2 };
+  out.sort((a, b) => (TIPOS_ALERTA[a.tipo].ordem - TIPOS_ALERTA[b.tipo].ordem) || ((b.valor || 0) - (a.valor || 0)) || a.unidade.localeCompare(b.unidade));
+  const grupos = {};
+  for (const a of out) { (grupos[a.tipo] = grupos[a.tipo] || { tipo: a.tipo, nivel: a.nivel, titulo: TIPOS_ALERTA[a.tipo].titulo, descr: TIPOS_ALERTA[a.tipo].descr, n: 0, itens: [] }); grupos[a.tipo].n++; grupos[a.tipo].itens.push(a); }
+  return { total: out.length, criticos: out.filter(a => a.nivel === 'critico').length, limiares: lim, grupos: Object.values(grupos).sort((a, b) => TIPOS_ALERTA[a.tipo].ordem - TIPOS_ALERTA[b.tipo].ordem), ordemNivel };
+}
+function hhmm(m) { m = Math.round(m || 0); return m >= 1440 ? `${Math.floor(m / 1440)} d ${Math.floor((m % 1440) / 60)} h` : (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`); }
 
 function vazio() {
   return { ativas: 0, em_curso: 0, atraso_prazo: 0, atraso_plano: 0, hoje: 0, semana: 0, urgentes: 0, espera_job: 0, feitas_hoje: 0, fechadas_7d: 0, paragens_7d_min: 0, por_estado: Object.fromEntries(E.ESTADOS.map(e => [e, 0])), qtd_em_curso: 0, qtd_hoje: 0, qtd_semana: 0, qtd_feita_hoje: 0 };
@@ -114,4 +188,4 @@ function calcular(ordens, hoje, semana, limite7, opts) {
   return { kpi: k, ordens: lista, em_curso: emCurso, maquinas };
 }
 
-module.exports = { enriquecer, vazio, somar, calcular, painelMaquinas };
+module.exports = { enriquecer, vazio, somar, calcular, painelMaquinas, alertas, limiares, LIMIARES, TIPOS_ALERTA };

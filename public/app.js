@@ -1,5 +1,5 @@
 // ============================================================
-// Dashboard OPS — cliente (JS puro, sem dependências)
+// Dashboard Geral — cliente (JS puro, sem dependências)
 // Lê /api/resumo a cada N segundos e renderiza KPIs, unidades e tabela.
 // ============================================================
 'use strict';
@@ -20,6 +20,9 @@ const decorrido = m => m == null ? '' : (m >= 1440 ? `${Math.floor(m / 1440)} d 
 
 let DADOS = null;
 let FILTRO = { unidade: '', estado: '', atrasos: false, hoje: false, fechadas: false, pesq: '', kpi: '' };
+let ECRA = new URLSearchParams(location.search).get('unidade') || ''; // ?unidade=DSL -> ecrã de uma só unidade
+let ALERTAS_TUDO = false;
+const unidadesVisiveis = () => DADOS.unidades.filter(u => !ECRA || u.unidade === ECRA);
 let ORDENACAO = { k: '', dir: 1 };
 let temporizador = null;
 
@@ -53,8 +56,39 @@ function agendar() {
 // ------------------------------------------------------------
 function render() {
   if (!DADOS) return;
-  renderMeta(); renderFontes(); renderKpis(); renderMaquinas(); renderUnidades(); renderFiltros(); renderTabela();
+  document.body.classList.toggle('uma-unidade', !!ECRA);
+  renderMeta(); renderFontes(); renderKpis(); renderAlertas(); renderMaquinas(); renderUnidades(); renderFiltros(); renderTabela();
   agendar();
+}
+
+// ------------------------------------------------------------
+// Excepções
+// ------------------------------------------------------------
+function renderAlertas() {
+  const A = DADOS.alertas || { grupos: [], total: 0, criticos: 0, limiares: {} };
+  const grupos = A.grupos.map(g => ({ ...g, itens: g.itens.filter(a => !ECRA || a.unidade === ECRA) })).filter(g => g.itens.length);
+  const total = grupos.reduce((s, g) => s + g.itens.length, 0);
+  const crit = grupos.reduce((s, g) => s + g.itens.filter(a => a.nivel === 'critico').length, 0);
+  const L = A.limiares || {};
+  $('#alertasResumo').textContent = total ? `${total} situações · ${crit} críticas · limiares: em processo > ${L.processo_h} h (${L.processo_h_fila} h em fila), fim registado > ${L.fim_registado_h} h, plano > ${L.plano_dias} d, JOB > ${L.job_dias} d` : 'sem situações a tratar';
+  $('#btnAlertas').style.display = total ? '' : 'none';
+  $('#btnAlertas').textContent = ALERTAS_TUDO ? 'mostrar menos' : 'mostrar tudo';
+  const MAX = ALERTAS_TUDO ? 1000 : 4;
+  $('#alertas').innerHTML = grupos.length ? grupos.map(g => `<div class="exc ${g.nivel}">
+      <div class="acab"><b>${esc(g.titulo)}</b><span class="n">${g.itens.length}</span></div>
+      <div class="adescr">${esc(g.descr)}</div>
+      <ul>${g.itens.slice(0, MAX).map(a => `<li data-op="${esc(a.op)}" data-unidade="${esc(a.unidade)}" title="Ver na tabela"><span class="au">${esc(a.unidade)}${a.maquina ? ' · ' + esc(a.maquina) : ''}</span><span class="aop">${esc(a.op || '—')}${a.cliente ? ' <span class="origem">' + esc(a.cliente) + '</span>' : ''}</span><span class="adet">${esc(a.detalhe)}</span></li>`).join('')}</ul>
+      ${g.itens.length > MAX ? `<div class="amais">+ ${g.itens.length - MAX} mais</div>` : ''}
+    </div>`).join('') : '<div class="vazio">✔ Nada em excepção — todas as apps ligadas, nada em processo além do limiar, sem prazos ultrapassados.</div>';
+  $$('#alertas li').forEach(el => el.addEventListener('click', () => {
+    if (!el.dataset.op) return;
+    FILTRO.unidade = el.dataset.unidade; $('#fUnidade').value = FILTRO.unidade;
+    FILTRO.pesq = el.dataset.op; $('#fPesq').value = FILTRO.pesq;
+    FILTRO.kpi = ''; FILTRO.estado = ''; FILTRO.atrasos = false; FILTRO.hoje = false; FILTRO.fechadas = true;
+    $('#fEstado').value = ''; $('#fAtrasos').checked = false; $('#fHoje').checked = false; $('#fFechadas').checked = true;
+    renderKpis(); renderTabela();
+    if (!document.body.classList.contains('tv')) $('#tabelaSec').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
 }
 
 // ------------------------------------------------------------
@@ -67,11 +101,15 @@ function linhaOrdem(o, comTempo) {
   if (!o.real_inicio && o.hora_plano_ini) t.push(`plano ${dPT(o.data_plano)} ${o.hora_plano_ini}${o.hora_plano_fim ? '→' + o.hora_plano_fim : ''}`);
   else if (!o.real_inicio && o.data_plano) t.push(`plano ${dPT(o.data_plano)}`);
   if (o.real_fim && comTempo) t.push(`fim ${dhPT(o.real_fim)}`);
+  if (o.real_inicio && comTempo && o.fim_plano_dt && o.plano_granularidade === 'dia') {
+    const passou = o.atraso_fim_min > 0;
+    t.push(`<span class="fimp${passou ? ' passou' : ''}" title="fim planeado pela app de origem">fim plano ${dhPT(o.fim_plano_dt)}${passou ? ' · +' + decorrido(o.atraso_fim_min) : ''}</span>`);
+  }
   if (o.atraso_prod_min) t.push(`paragem ${minH(o.atraso_prod_min)}`);
   return t.join(' · ');
 }
 function renderMaquinas() {
-  $('#maquinas').innerHTML = DADOS.unidades.map(u => {
+  $('#maquinas').innerHTML = unidadesVisiveis().map(u => {
     const f = u.fonte;
     const cls = !f.ok ? 'falha' : (f.idade_min != null && f.idade_min > 10 ? 'velho' : 'ok');
     const tiles = u.maquinas.length ? u.maquinas.map(m => {
@@ -101,7 +139,7 @@ function renderMaquinas() {
 function renderMeta() {
   const d = DADOS;
   const hora = d.ultima_agregacao ? new Date(d.ultima_agregacao).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '—';
-  $('#meta').textContent = `${dPT(d.hoje)}/${d.hoje.slice(0, 4)} · semana ${d.semana.split('-W')[1]} · última leitura ${hora} · ${d.fontes_ok}/${d.fontes_total} apps ligadas · actualiza a cada ${d.refresh_seg} s`;
+  $('#meta').textContent = `${ECRA ? 'ECRÃ ' + ECRA + ' · ' : ''}${dPT(d.hoje)}/${d.hoje.slice(0, 4)} · semana ${d.semana.split('-W')[1]} · última leitura ${hora} · ${d.fontes_ok}/${d.fontes_total} apps ligadas · actualiza a cada ${d.refresh_seg} s`;
 }
 
 function renderFontes() {
@@ -121,9 +159,11 @@ function kpiTile(cls, rot, val, det, chave, alerta) {
     <div class="det">${det}</div></div>`;
 }
 function renderKpis() {
-  const t = DADOS.total;
+  const uni = ECRA ? DADOS.unidades.find(u => u.unidade === ECRA) : null;
+  const t = uni ? uni.kpi : DADOS.total;
+  const maqT = uni ? uni.maquinas.length : DADOS.maquinas_total, maqP = uni ? uni.maquinas.filter(m => m.estado === 'em_processo').length : DADOS.maquinas_em_processo;
   $('#kpis').innerHTML = [
-    kpiTile('k-proc', 'Em processo agora', t.em_curso, `${nR(t.qtd_em_curso)} un. · ${DADOS.maquinas_em_processo}/${DADOS.maquinas_total} máquinas a processar`, 'em_curso'),
+    kpiTile('k-proc', 'Em processo agora', t.em_curso, `${nR(t.qtd_em_curso)} un. · ${maqP}/${maqT} máquinas a processar`, 'em_curso'),
     kpiTile('k-prazo', '<span class="ico">⏰</span> Atraso prazo cliente', t.atraso_prazo, 'data limite ultrapassada, não terminada', 'atraso_prazo', t.atraso_prazo > 0),
     kpiTile('k-plano', '<span class="ico">⚠</span> Atraso plano', t.atraso_plano, 'dia planeado passou, não terminada', 'atraso_plano', t.atraso_plano > 0),
     kpiTile('k-hoje', 'Planeado para hoje', t.hoje, `${nR(t.qtd_hoje)} un. por fazer · ${t.feitas_hoje} terminadas hoje (${nR(t.qtd_feita_hoje)} un.)`, 'hoje'),
@@ -142,7 +182,7 @@ function barraEstados(k) {
 }
 
 function renderUnidades() {
-  $('#unidades').innerHTML = DADOS.unidades.map(u => {
+  $('#unidades').innerHTML = unidadesVisiveis().map(u => {
     const k = u.kpi, f = u.fonte;
     const lista = u.em_curso.length ? u.em_curso.map(o => `<li class="${o.manutencao ? 'manut' : ''}">
         <span class="op">${esc(o.op || o.ref || '—')}${o.urgente ? ' <span class="tag urg">urgente</span>' : ''}${o.manutencao ? ' <span class="tag manut">manutenção</span>' : ''}</span>
@@ -193,6 +233,10 @@ function renderFiltros() {
   const su = $('#fUnidade');
   if (su.options.length <= 1) {
     DADOS.unidades.forEach(u => su.insertAdjacentHTML('beforeend', `<option value="${esc(u.unidade)}">${esc(u.unidade)}</option>`));
+    const se2 = $('#selUnidade');
+    DADOS.unidades.forEach(u => se2.insertAdjacentHTML('beforeend', `<option value="${esc(u.unidade)}">${esc(u.unidade)}</option>`));
+    se2.value = ECRA;
+    if (ECRA) { FILTRO.unidade = ECRA; su.value = ECRA; }
     const se = $('#fEstado');
     ESTADOS_ORDEM.forEach(e => se.insertAdjacentHTML('beforeend', `<option value="${e}">${esc(DADOS.estados[e])}</option>`));
   }
@@ -272,6 +316,13 @@ $('#fHoje').addEventListener('change', e => { FILTRO.hoje = e.target.checked; if
 $('#fFechadas').addEventListener('change', e => { FILTRO.fechadas = e.target.checked; renderTabela(); });
 $('#fPesq').addEventListener('input', e => { FILTRO.pesq = e.target.value; renderTabela(); });
 $('#btnCsv').addEventListener('click', exportarCsv);
+$('#btnAlertas').addEventListener('click', () => { ALERTAS_TUDO = !ALERTAS_TUDO; renderAlertas(); });
+$('#selUnidade').addEventListener('change', e => {
+  ECRA = e.target.value; const u = new URL(location.href);
+  if (ECRA) u.searchParams.set('unidade', ECRA); else u.searchParams.delete('unidade');
+  history.replaceState(null, '', u);
+  FILTRO.unidade = ECRA; $('#fUnidade').value = ECRA; render();
+});
 $('#btnAtualizar').addEventListener('click', () => carregar(true));
 $('#btnTv').addEventListener('click', () => { document.body.classList.toggle('tv'); const u = new URL(location.href); if (document.body.classList.contains('tv')) u.searchParams.set('tv', '1'); else u.searchParams.delete('tv'); history.replaceState(null, '', u); });
 $$('#tabela th').forEach(th => th.addEventListener('click', () => { const k = th.dataset.k; if (ORDENACAO.k === k) ORDENACAO.dir = -ORDENACAO.dir; else { ORDENACAO.k = k; ORDENACAO.dir = 1; } renderTabela(); }));

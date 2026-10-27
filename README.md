@@ -27,6 +27,25 @@ Confirmado nos dados de produção (26/10/2026):
 
 **PureCork não regista execução.** Só existem `LOTE FINAL` (→ fechada) e `CONTADO`; o resto é "planeado". Não há "em processo" nesta unidade (está assinalado no ecrã).
 
+## Painel de excepções ("Atenção")
+
+Lista o que precisa de acção, agrupado por tipo e ordenado por gravidade. Clicar num item filtra a tabela.
+
+| Tipo | Regra | Limiar (variável de ambiente) |
+|---|---|---|
+| App sem ligação | última leitura da fonte falhou | — |
+| Em processo além do fim planeado | em processo e o fim calculado pela app (Densidades, DSL Talis; só dia nas outras) já passou | — |
+| Terminada mas não fechada | fim real registado e estado ainda "Em Processo" | `ALERTA_FIM_REGISTADO_H` (12 h) |
+| Em processo há demasiado tempo | sem fim registado | `ALERTA_PROCESSO_H` (24 h) · `ALERTA_PROCESSO_H_FILA` (96 h, VOCUS) |
+| Data limite do cliente ultrapassada | = KPI "atraso prazo" | — |
+| Pronta mas sem máquina | liberada / na linha com dia planeado ≤ hoje, ou em processo, sem máquina | — |
+| Plano antigo por fechar | activa com dia planeado há mais de N dias | `ALERTA_PLANO_DIAS` (14) |
+| Espera JOB há demasiado tempo | terminada à espera de JOB SAP | `ALERTA_JOB_DIAS` (7) |
+
+## Ecrã por unidade
+
+`?tv=1&unidade=DSL` (ou o selector "Ecrã" no cabeçalho) mostra só essa unidade: KPIs da unidade, excepções da unidade e as suas máquinas em letra grande — um ecrã por secção no chão de fábrica. Unidades: `WIM`, `VOCUS`, `DS100`, `PURECORK`, `DENSIDADES`, `DSL`, `DSL TALIS`.
+
 ## Painel de máquinas
 
 Para cada máquina/linha (lista vinda das settings de cada app + máquinas vistas nas ordens): o que está **em processo** (OP, cliente, produto, quantidade, início real, tempo decorrido, paragens), o que vem **a seguir** (fila: atrasadas recentes → hoje → futuro, pela ordem da app), carga de hoje, terminadas hoje e nº de ordens em atraso. Máquinas:
@@ -42,6 +61,8 @@ Para cada máquina/linha (lista vinda das settings de cada app + máquinas vista
 | DSL TALIS | EE1, EE2, EM | `config.capacidade` |
 
 No WIM, uma ordem com a lavação em curso e o Innocork já planeado para hoje aparece na fila do INNOCORK como "fase futura" (só no painel; não conta nos KPIs).
+
+Nas máquinas a processar mostra-se o **fim planeado** quando a app de origem o calcula (Densidades `_calcFimP`, DSL Talis `plano.linhas.data_final`; nas outras só o dia) e, a vermelho, há quanto tempo foi ultrapassado. Não se estima fim para VOCUS/DSL: as apps não expõem a fórmula (taxa × OEE × paragens) e o dashboard não inventa.
 
 ## Regras dos indicadores (`src/indicadores.js`)
 
@@ -74,7 +95,7 @@ Variáveis de ambiente (opcionais): `PORT`, `REFRESH_SEC` (defeito 60), `TIMEOUT
 ## Endpoints
 
 - `GET /` — dashboard. `?tv=1` abre em modo ecrã (indicadores + grelha de máquinas; cabe num 1080p).
-- `GET /api/resumo` — indicadores por unidade + lista de ordens enriquecidas. `?so=kpi` omite a lista.
+- `GET /api/resumo` — indicadores por unidade, painel de máquinas, excepções (`alertas`) e lista de ordens enriquecidas. `?so=kpi` omite a lista.
 - `POST /api/refresh` — força nova leitura das fontes.
 - `GET /health` — `{status, fontes_ok, fontes_total, ultima_agregacao}`.
 

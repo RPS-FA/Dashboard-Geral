@@ -83,3 +83,31 @@ assert.strictEqual(r.maquinas[1].estado, 'planeada');
 assert.strictEqual(r.maquinas[2].estado, 'sem_plano');
 
 console.log('OK — todos os testes passaram');
+
+// --- alertas ---
+{
+  const hoje2 = '2026-10-27', agora2 = new Date('2026-10-27T12:00:00Z'), sem2 = '2026-10-44', lim72 = '2026-10-20';
+  const b = { manutencao: false, qtd: 1, urgente: false, data_plano: null, data_fim_plano: null, semana_plano: null, data_limite: null, real_inicio: null, real_fim: null, atraso_prod_min: 0, maquina: 'M', fila: 0, plano_granularidade: 'dia', unidade: 'U', op: 'X', id: 'x' };
+  const lista = [
+    { ...b, id: 'a', op: 'A', estado: 'em_processo', real_inicio: '2026-10-22 08:45', real_fim: '2026-10-22 10:05' },           // fim registado sem fechar
+    { ...b, id: 'b', op: 'B', estado: 'em_processo', real_inicio: '2026-10-25 08:00' },                                          // > 24 h
+    { ...b, id: 'c', op: 'C', estado: 'em_processo', real_inicio: '2026-10-21 08:00', plano_granularidade: 'fila' },             // fila: 148 h > 96 h
+    { ...b, id: 'd', op: 'D', estado: 'em_processo', real_inicio: '2026-10-27 08:00', data_fim_plano: '2026-10-27', hora_plano_fim: '10:00' }, // fim plano passou
+    { ...b, id: 'e', op: 'E', estado: 'aberto', data_plano: '2026-10-01' },                                                      // plano antigo
+    { ...b, id: 'f', op: 'F', estado: 'espera_job', real_fim: '2026-10-10 12:00' },                                              // JOB antigo
+    { ...b, id: 'g', op: 'G', estado: 'liberada', data_plano: '2026-10-27', maquina: null },                                     // sem máquina
+    { ...b, id: 'h', op: 'H', estado: 'em_processo', real_inicio: '2026-10-27 09:00' },                                          // normal
+  ].map(o => I.enriquecer(o, hoje2, sem2, lim72, agora2));
+  const A = I.alertas(lista, [{ unidade: 'U', id: 'u', fonte: { ok: false, erro: 'timeout', ultima_ok: null } }], hoje2, agora2, I.LIMIARES);
+  const tipos = Object.fromEntries(A.grupos.map(g => [g.tipo, g.itens.map(a => a.op)]));
+  assert.deepStrictEqual(tipos.fonte_falha.length, 1);
+  assert.deepStrictEqual(tipos.fim_registado, ['A']);
+  assert.deepStrictEqual(tipos.processo_longo, ['C', 'B']);
+  assert.deepStrictEqual(tipos.fim_plano, ['D']);
+  assert.deepStrictEqual(tipos.plano_antigo, ['E']);
+  assert.deepStrictEqual(tipos.job_antigo, ['F']);
+  assert.deepStrictEqual(tipos.sem_maquina, ['G']);
+  assert.strictEqual(lista[3].atraso_fim_min, 120, 'fim plano 10:00, agora 12:00 (Lisboa=UTC) -> 120 min');
+  assert.strictEqual(A.total, 8);
+  console.log('OK — alertas');
+}
