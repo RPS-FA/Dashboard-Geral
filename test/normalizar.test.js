@@ -58,6 +58,26 @@ d = I.enriquecer({ ...base, plano_granularidade: 'semana', data_plano: '2026-10-
 assert.ok(!d.hoje && d.semana && !d.atraso_plano, 'semana: sem hoje, sem atraso');
 d = I.enriquecer({ ...base, plano_granularidade: 'semana', data_plano: '2026-10-19', data_fim_plano: '2026-10-25', semana_plano: '2026-W43' }, hoje, semana, lim7, agora);
 assert.ok(d.atraso_plano && d.atraso_plano_dias === 1, 'semana anterior: atraso 1 dia');
+
+// --- OP por abrir: número de OP = 8 dígitos (1xxxxxxx) isolados no campo OP ---
+const comOP = { '12063090': '12063090', '12063090- LT02356473': '12063090', '14400249 -2': '14400249', 'OP12063090': '12063090', '12063068 - REDES': '12063068', '13106313 LT02383143': '13106313' };
+for (const [raw, esp] of Object.entries(comOP)) assert.strictEqual(U.numOP(raw), esp, `numOP ${raw}`);
+const semOP = ['', '134XXXX', 'AG OP - 150XXX', '1800XXXX', '144xxxx -1', 'AG OP (1) - 1500XXXX - PAV 1200', 'LT02328411', 'CLIENTE', '4400042021-20', '02356473', '123456789', 'CICLO LIMPEZA', 'AG OP - N-QV2-NAT-49X240-0101-SDE-SDS-TA-SC ABRIR OP SC COM 40K'];
+for (const raw of semOP) assert.strictEqual(U.numOP(raw), null, `numOP sem OP: ${raw}`);
+d = I.enriquecer({ ...base, op: 'AG OP - 150XXX', data_plano: '2026-10-28' }, hoje, semana, lim7, agora);
+assert.ok(d.sem_op && d.sem_op_nivel === 'serio' && d.dias_plano === 2, 'sem OP a 2 dias = sério');
+d = I.enriquecer({ ...base, op: '1800XXXX', plano_granularidade: 'fila', semana_plano: '2026-W43' }, hoje, semana, lim7, agora);
+assert.ok(d.sem_op && d.sem_op_nivel === 'critico' && d.dias_plano === -7, 'fila VOCUS da semana passada sem OP = crítico (segunda-feira da semana)');
+d = I.enriquecer({ ...base, op: '134XXXX', estado: 'pre', data_plano: '2027-01-05' }, hoje, semana, lim7, agora);
+assert.ok(d.sem_op && d.sem_op_nivel === 'aviso' && d.dias_plano === 71, 'kanban a 71 dias sem OP = aviso (sem horizonte, aparece sempre)');
+d = I.enriquecer({ ...base, op: 'CICLO LIMPEZA', manutencao: true, data_plano: hoje }, hoje, semana, lim7, agora);
+assert.ok(!d.sem_op, 'manutenção nunca é OP por abrir');
+d = I.enriquecer({ ...base, op: 'LT02328411', estado: 'fechada', data_plano: '2026-05-28', real_fim: '2026-05-28' }, hoje, semana, lim7, agora);
+assert.ok(!d.sem_op, 'fechada sem OP não é OP por abrir');
+d = I.enriquecer({ ...base, op: '12063090- LT02356473', estado: 'em_processo', data_plano: hoje }, hoje, semana, lim7, agora);
+assert.ok(!d.sem_op && d.op_num === '12063090', 'com OP');
+{ const k = I.vazio(); for (const o of [{ ...base, op: 'AG OP', data_plano: '2026-10-20' }, { ...base, op: '150XXX', data_plano: '2026-10-30' }, { ...base, op: '150XXX', data_plano: '2026-12-01' }, { ...base, op: '15007315', data_plano: '2026-10-30' }]) I.somar(k, I.enriquecer(o, hoje, semana, lim7, agora));
+  assert.ok(k.sem_op === 3 && k.sem_op_passado === 1 && k.sem_op_7d === 1, `KPI sem_op ${JSON.stringify([k.sem_op, k.sem_op_passado, k.sem_op_7d])}`); }
 d = I.enriquecer({ ...base, plano_granularidade: 'fila', semana_plano: '2026-W03', data_limite: '2026-08-03' }, hoje, semana, lim7, agora);
 assert.ok(!d.atraso_plano && d.atraso_prazo && !d.hoje, 'fila: só prazo conta');
 d = I.enriquecer({ ...base, estado: 'em_processo', manutencao: true, data_plano: '2026-10-01' }, hoje, semana, lim7, agora);

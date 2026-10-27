@@ -107,11 +107,13 @@ function resumo() {
   const fontesOk = unidades.filter(u => u.fonte.ok).length;
   const alertas = I.alertas(ordens, unidades, hoje, agora, LIMIARES);
   for (const u of unidades) u.alertas_n = alertas.grupos.reduce((s, g) => s + g.itens.filter(a => a.unidade === u.unidade).length, 0);
+  // OPs por abrir: ordens activas sem número de OP (8 dígitos), as de plano mais próximo primeiro (sem data no fim)
+  const opsPorAbrir = ordens.filter(o => o.sem_op).sort((a, b) => ((a.dias_plano ?? 1e9) - (b.dias_plano ?? 1e9)) || a.unidade.localeCompare(b.unidade) || ((a.fila ?? 1e9) - (b.fila ?? 1e9)));
   return {
     gerado: agora.toISOString(), hoje, semana, refresh_seg: REFRESH_SEC, ultima_agregacao: ultimaAgregacao,
     fontes_ok: fontesOk, fontes_total: unidades.length,
     maquinas_total: maqTotal, maquinas_em_processo: maqEmProcesso,
-    total, unidades, alertas,
+    total, unidades, alertas, ops_por_abrir: opsPorAbrir,
     estados: E.LABEL,
     ordens: ordens.sort((a, b) => (b.atraso_prazo_dias - a.atraso_prazo_dias) || (b.atraso_plano_dias - a.atraso_plano_dias) || Number(b.em_curso) - Number(a.em_curso) || String(a.data_plano || '9999').localeCompare(String(b.data_plano || '9999'))),
   };

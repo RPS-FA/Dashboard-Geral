@@ -24,7 +24,7 @@ async function carregar(fonte, http) {
     out.push({
       fonte: fonte.id, unidade: fonte.unidade,
       id: `${fonte.id}-${o.id}`,
-      op: U.limpa(o.op) || U.limpa(o.lote), ref: U.limpa(o.lote), pedido: '',
+      op: U.limpa(o.op), ref: U.limpa(o.lote), pedido: '', // op vazia = OP por abrir (o lote fica em ref; o ecrã mostra op || ref)
       cliente: U.limpa(o.cliente), produto: U.limpa(o.material_descricao || o.material_codigo), calibre: U.limpa(o.calibre),
       qtd: Math.round(U.num(o.qc) * 1000),
       maquina: U.limpa(o.maquina) || null, fase: null,

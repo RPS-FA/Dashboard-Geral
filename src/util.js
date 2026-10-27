@@ -126,7 +126,15 @@ function textoPesquisa(o) { return normTexto(CAMPOS_PESQUISA.map(k => o[k]).filt
 /** Todas as palavras da pesquisa têm de aparecer (em qualquer campo). Devolve true/false. */
 function corresponde(texto, q) { const toks = normTexto(q).split(' ').filter(Boolean); return toks.length > 0 && toks.every(t => texto.includes(t)); }
 
+/**
+ * Número de OP (SAP) escrito no campo OP: 8 dígitos seguidos, não colados a letras/dígitos e sem começar por 0
+ * (as OPs do CSP1 começam por 11…18; os lotes "LT02356473" e os pedidos "4400041993-10" não contam).
+ * Aceita "12063090- LT02356473", "14400249 -2", "OP12063090". Devolve '12063090' ou null.
+ */
+const RE_OP8 = /(?<![A-Za-z0-9])([1-9]\d{7})(?!\d)/;
+function numOP(s) { const m = RE_OP8.exec(String(s == null ? '' : s).replace(/OP(?=\d)/gi, 'OP ')); return m ? m[1] : null; }
+
 function num(v) { if (v == null || v === '') return 0; const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; }
 function limpa(s) { return s == null ? '' : String(s).replace(/\s+/g, ' ').trim(); }
 
-module.exports = { TZ, hoje, dataLisboa, horaLisboa, addDias, difDias, semanaISO, segundaDaSemana, domingoDaSemana, paraData, dataHora, isoParaLocal, paraMinutos, minutosDesde, normTexto, textoPesquisa, corresponde, CAMPOS_PESQUISA, num, limpa };
+module.exports = { TZ, hoje, dataLisboa, horaLisboa, addDias, difDias, semanaISO, segundaDaSemana, domingoDaSemana, paraData, dataHora, isoParaLocal, paraMinutos, minutosDesde, normTexto, textoPesquisa, corresponde, CAMPOS_PESQUISA, numOP, num, limpa };

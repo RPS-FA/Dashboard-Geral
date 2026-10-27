@@ -1,10 +1,28 @@
-# Dashboard Geral — CSP1 · operações
+# Dashboard Geral — CSP1 · urgências de planeamento
 
-Dashboard de leitura que agrega as 6 apps de planeamento do CSP1 (7 unidades) e mostra, num só ecrã:
-**o que cada máquina está a processar agora** (painel de máquinas, como os separadores "Monitor" do WIM e do VOCUS),
-**o estado das ordens** (ciclo normalizado) e **os atrasos** (prazo cliente vs. plano).
+Dashboard de leitura que agrega as 6 apps de planeamento do CSP1 (7 unidades) e mostra **só o que precisa de acção da equipa de planeamento**:
 
-Só faz `GET` às apps de origem. Não tem base de dados e não altera nada.
+1. **OP por abrir** — ordens activas cujo campo OP ainda não tem o número de OP (8 dígitos). Todas, sem horizonte, ordenadas pelo dia planeado.
+2. **Atenção** — excepções: app sem ligação, em processo além do fim planeado, terminada mas não fechada, em processo há demasiado tempo, data limite do cliente ultrapassada, pronta sem máquina, plano antigo, Espera JOB antigo.
+3. **Pesquisa global** — qualquer item em todos os planeamentos (activos e fechados), com detalhe da ordem.
+
+Só faz `GET` às apps de origem. Não tem base de dados e não altera nada. (As versões v1–v3 tinham painel de máquinas, cartões por unidade e tabela completa — removidos na v5 a pedido; a API `/api/resumo` continua a devolver `unidades[].maquinas` e `ordens`, por isso recuperam-se só com código de cliente.)
+
+## OP por abrir (regra)
+
+| | |
+|---|---|
+| Ordem considerada | activa: não terminal (`terminada`, `espera_job`, `fechada`), não manutenção, não "fase futura" (WIM) |
+| Número de OP | 8 dígitos seguidos, isolados (não colados a letras/dígitos) e sem começar por 0 — `src/util.js numOP()`. As OPs do CSP1 começam por 11…18 (PureCork 111/114, WIM 120, DSL 130–135, Densidades 134, DSL Talis 144, DS100 150/151, VOCUS 180/185) |
+| Conta como OP | `12063090`, `12063090- LT02356473`, `14400249 -2`, `OP12063090`, `12063068 - REDES` |
+| Não conta | `AG OP - 150XXX`, `1800XXXX`, `144xxxx -1`, `AG OP (1) - 1500XXXX - PAV 1200`, lote `LT02328411`, pedido `4400042021-20`, vazio |
+| Dias até ao plano | dia planeado − hoje; DS100 (semana) e VOCUS (fila com `weekKey`) usam a **segunda-feira** dessa semana; sem data → fim da lista |
+| Nível | **crítico** = plano já passou ou é hoje · **sério** = próximos 7 dias · **aviso** = depois |
+| Onde | KPI "OP por abrir" (total · já passado/hoje · próximos 7 d), chips por unidade, tabela (60 linhas, "mostrar todas"), CSV, modo TV (22 mais próximas) |
+
+PureCork: o campo `op` da app fica vazio quando não há OP (o lote fica em `ref`); até à v4 o dashboard preenchia `op` com o lote, o que escondia OPs em falta.
+
+## Fontes
 
 | Unidade | App | Endpoint lido | Plano | Data limite | Horas reais | Paragens |
 |---|---|---|---|---|---|---|
@@ -29,7 +47,7 @@ Confirmado nos dados de produção (26/10/2026):
 
 ## Painel de excepções ("Atenção")
 
-Lista o que precisa de acção, agrupado por tipo e ordenado por gravidade. Clicar num item filtra a tabela.
+Lista o que precisa de acção, agrupado por tipo e ordenado por gravidade. Clicar num item abre o detalhe da ordem (todos os campos + ligação à app de origem).
 
 | Tipo | Regra | Limiar (variável de ambiente) |
 |---|---|---|
@@ -44,31 +62,13 @@ Lista o que precisa de acção, agrupado por tipo e ordenado por gravidade. Clic
 
 ## Pesquisa global
 
-A caixa no cabeçalho procura **em todos os planeamentos ao mesmo tempo** — todas as unidades, ordens activas e fechadas — por OP, lote, pedido/encomenda, cliente, produto, calibre, máquina, fase, estado de origem e observações. Várias palavras = todas têm de aparecer (`csu 45x240`); acentos e maiúsculas são ignorados. Os resultados agrupam-se por unidade (máx. 12 por unidade); clicar numa ordem abre-a na tabela (activa o filtro "incluir fechadas", mesmo que seja antiga). `Esc` fecha.
+A caixa no cabeçalho procura **em todos os planeamentos ao mesmo tempo** — todas as unidades, ordens activas e fechadas — por OP, lote, pedido/encomenda, cliente, produto, calibre, máquina, fase, estado de origem e observações. Várias palavras = todas têm de aparecer (`csu 45x240`); acentos e maiúsculas são ignorados. Os resultados agrupam-se por unidade (máx. 12 por unidade); clicar numa ordem abre o detalhe (todos os campos, estado, plano, real, ligação à app). `Esc` fecha.
 
 Alcance = o que cada app guarda: WIM, VOCUS, DS100, PureCork, Densidades e DSL devolvem o histórico completo que têm; **DSL Talis só o mês actual e o anterior** (`/api/estado?mes=`). Ordens apagadas nas apps não aparecem. API: `GET /api/procurar?q=…` (máx. 200 resultados).
 
 ## Ecrã por unidade
 
-`?tv=1&unidade=DSL` (ou o selector "Ecrã" no cabeçalho) mostra só essa unidade: KPIs da unidade, excepções da unidade e as suas máquinas em letra grande — um ecrã por secção no chão de fábrica. Unidades: `WIM`, `VOCUS`, `DS100`, `PURECORK`, `DENSIDADES`, `DSL`, `DSL TALIS`.
-
-## Painel de máquinas
-
-Para cada máquina/linha (lista vinda das settings de cada app + máquinas vistas nas ordens): o que está **em processo** (OP, cliente, produto, quantidade, início real, tempo decorrido, paragens), o que vem **a seguir** (fila: atrasadas recentes → hoje → futuro, pela ordem da app), carga de hoje, terminadas hoje e nº de ordens em atraso. Máquinas:
-
-| Unidade | Máquinas | Origem |
-|---|---|---|
-| WIM | Maq 1, Maq 2, Maq 3 (Wash) · INNOCORK · Make-up (a app não atribui máquina ao make-up) | `settings.sections` |
-| VOCUS | Vocus 1, Vocus 2, Vocus 3 | fixo + dados |
-| DS100 | DS100 · CSP2 (análise feita no CSP2) | fixo + dados |
-| PURECORK | PURECORK 2, PURECORK 3 | `settings.maquinas` (activas) |
-| DENSIDADES | Maq 1 - Linha 9, Maq 3 - Linha 10 | `settings.turnosPorMaquina` |
-| DSL | Linha 1…8, EM | `settings.calibresPorLinha` |
-| DSL TALIS | EE1, EE2, EM | `config.capacidade` |
-
-No WIM, uma ordem com a lavação em curso e o Innocork já planeado para hoje aparece na fila do INNOCORK como "fase futura" (só no painel; não conta nos KPIs).
-
-Nas máquinas a processar mostra-se o **fim planeado** quando a app de origem o calcula (Densidades `_calcFimP`, DSL Talis `plano.linhas.data_final`; nas outras só o dia) e, a vermelho, há quanto tempo foi ultrapassado. Não se estima fim para VOCUS/DSL: as apps não expõem a fórmula (taxa × OEE × paragens) e o dashboard não inventa.
+`?tv=1&unidade=DSL` (ou o selector "Unidade" no cabeçalho) mostra só essa unidade: KPIs, OPs por abrir e excepções da unidade, em letra maior — um ecrã por secção. Unidades: `WIM`, `VOCUS`, `DS100`, `PURECORK`, `DENSIDADES`, `DSL`, `DSL TALIS`.
 
 ## Regras dos indicadores (`src/indicadores.js`)
 
@@ -100,8 +100,8 @@ Variáveis de ambiente (opcionais): `PORT`, `REFRESH_SEC` (defeito 60), `TIMEOUT
 
 ## Endpoints
 
-- `GET /` — dashboard. `?tv=1` abre em modo ecrã (indicadores + grelha de máquinas; cabe num 1080p).
-- `GET /api/resumo` — indicadores por unidade, painel de máquinas, excepções (`alertas`) e lista de ordens enriquecidas. `?so=kpi` omite a lista.
+- `GET /` — dashboard. `?tv=1` abre em modo ecrã (KPIs + OPs por abrir mais próximas + excepções; cabe num 1080p).
+- `GET /api/resumo` — indicadores por unidade (inclui `sem_op`, `sem_op_passado`, `sem_op_7d`), `ops_por_abrir` (ordenada), excepções (`alertas`), painel de máquinas (`unidades[].maquinas`, sem UI) e lista de ordens enriquecidas (`op_num`, `sem_op`, `sem_op_nivel`, `dias_plano`). `?so=kpi` omite a lista.
 - `GET /api/procurar?q=…` — pesquisa global (todas as unidades, activas e fechadas; todas as palavras têm de aparecer).
 - `POST /api/refresh` — força nova leitura das fontes.
 - `GET /health` — `{status, fontes_ok, fontes_total, ultima_agregacao}`.

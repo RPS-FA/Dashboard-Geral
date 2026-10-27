@@ -52,6 +52,13 @@ function enriquecer(o, hoje, semana, limite7, agora) {
   }
   // Fim real registado mas estado ainda "em processo" (há quanto tempo)
   d.fim_registado_min = (d.em_curso && o.real_fim && o.real_fim.length > 10 && agora) ? U.minutosDesde(o.real_fim, agora) : null;
+  // OP por abrir: ordem activa (não terminal, não manutenção) sem número de OP de 8 dígitos no campo OP
+  d.op_num = U.numOP(o.op);
+  d.sem_op = d.ativa && !d.op_num;
+  // Dias até ao plano (negativo = já passou): dia planeado, ou segunda-feira da semana planeada (DS100, fila VOCUS)
+  const refPlano = o.data_plano || (o.semana_plano ? U.segundaDaSemana(o.semana_plano) : null);
+  d.dias_plano = refPlano ? U.difDias(hoje, refPlano) : null;
+  d.sem_op_nivel = !d.sem_op ? null : (d.dias_plano == null ? 'aviso' : (d.dias_plano <= 0 ? 'critico' : (d.dias_plano <= 7 ? 'serio' : 'aviso')));
   return d;
 }
 
@@ -120,12 +127,13 @@ function alertas(ordens, unidades, hoje, agora, lim) {
 function hhmm(m) { m = Math.round(m || 0); return m >= 1440 ? `${Math.floor(m / 1440)} d ${Math.floor((m % 1440) / 60)} h` : (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`); }
 
 function vazio() {
-  return { ativas: 0, em_curso: 0, atraso_prazo: 0, atraso_plano: 0, hoje: 0, semana: 0, urgentes: 0, espera_job: 0, feitas_hoje: 0, fechadas_7d: 0, paragens_7d_min: 0, por_estado: Object.fromEntries(E.ESTADOS.map(e => [e, 0])), qtd_em_curso: 0, qtd_hoje: 0, qtd_semana: 0, qtd_feita_hoje: 0 };
+  return { ativas: 0, em_curso: 0, atraso_prazo: 0, atraso_plano: 0, hoje: 0, semana: 0, urgentes: 0, espera_job: 0, feitas_hoje: 0, fechadas_7d: 0, paragens_7d_min: 0, por_estado: Object.fromEntries(E.ESTADOS.map(e => [e, 0])), qtd_em_curso: 0, qtd_hoje: 0, qtd_semana: 0, qtd_feita_hoje: 0, sem_op: 0, sem_op_passado: 0, sem_op_7d: 0 };
 }
 
 function somar(k, d) {
   if (d.manutencao || d.fase_futura) return;
   if (d.ativa) { k.ativas++; k.por_estado[d.estado] = (k.por_estado[d.estado] || 0) + 1; }
+  if (d.sem_op) { k.sem_op++; if (d.sem_op_nivel === 'critico') k.sem_op_passado++; else if (d.sem_op_nivel === 'serio') k.sem_op_7d++; }
   if (d.estado === 'espera_job') k.espera_job++;
   if (d.em_curso) { k.em_curso++; k.qtd_em_curso += d.qtd || 0; }
   if (d.atraso_prazo) k.atraso_prazo++;
