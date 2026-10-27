@@ -4,13 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard Geral · Operações CSP1</title>
-<link rel="stylesheet" href="styles.css?v=1">
+<link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 <header class="topo">
   <div class="topo-esq">
     <h1>Dashboard Geral <span class="sub">· operações CSP1</span></h1>
     <div class="meta" id="meta">a ligar…</div>
+  </div>
+  <div class="pesq-global">
+    <input id="qGlobal" type="search" autocomplete="off" placeholder="Procurar em todos os planeamentos: OP, lote, cliente, produto, pedido…" aria-label="Pesquisa global">
+    <div id="qResultados" class="q-res" hidden></div>
   </div>
   <div class="fontes" id="fontes" aria-label="Estado das ligações às apps"></div>
   <div class="topo-dir">
@@ -81,6 +85,6 @@
 </main>
 
 <div id="toast" class="toast" hidden></div>
-<script src="app.js?v=1"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

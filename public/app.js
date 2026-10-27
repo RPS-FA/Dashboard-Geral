@@ -19,12 +19,59 @@ const horaDe = s => (s && s.length > 10) ? s.slice(11, 16) : null;
 const decorrido = m => m == null ? '' : (m >= 1440 ? `${Math.floor(m / 1440)} d ${Math.floor((m % 1440) / 60)} h` : (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`));
 
 let DADOS = null;
-let FILTRO = { unidade: '', estado: '', atrasos: false, hoje: false, fechadas: false, pesq: '', kpi: '' };
+let FILTRO = { unidade: '', estado: '', atrasos: false, hoje: false, fechadas: false, pesq: '', kpi: '', todas: false };
 let ECRA = new URLSearchParams(location.search).get('unidade') || ''; // ?unidade=DSL -> ecrã de uma só unidade
 let ALERTAS_TUDO = false;
 const unidadesVisiveis = () => DADOS.unidades.filter(u => !ECRA || u.unidade === ECRA);
 let ORDENACAO = { k: '', dir: 1 };
 let temporizador = null;
+
+// ------------------------------------------------------------
+// Pesquisa global (todas as unidades, activas e fechadas, sem limite de data)
+// ------------------------------------------------------------
+const normTexto = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const CAMPOS_PESQUISA = ['op', 'ref', 'pedido', 'cliente', 'produto', 'calibre', 'maquina', 'fase', 'estado_origem', 'obs', 'unidade'];
+const textoPesquisa = o => normTexto(CAMPOS_PESQUISA.map(k => o[k]).filter(Boolean).join(' | '));
+function procurar(q) {
+  const toks = normTexto(q).split(' ').filter(Boolean);
+  if (!toks.length || !DADOS) return [];
+  return DADOS.ordens.filter(o => { const t = textoPesquisa(o); return toks.every(k => t.includes(k)); });
+}
+function realcar(txt, q) {
+  const toks = normTexto(q).split(' ').filter(Boolean);
+  let h = esc(txt);
+  for (const t of toks) { if (t.length < 2) continue; const re = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'); h = h.replace(re, m => `<mark>${m}</mark>`); }
+  return h;
+}
+const ORDEM_UNID = ['PURECORK', 'DSL', 'DENSIDADES', 'WIM', 'VOCUS', 'DS100', 'DSL TALIS'];
+function renderPesquisa() {
+  const q = $('#qGlobal').value.trim();
+  const box = $('#qResultados');
+  if (q.length < 2) { box.hidden = true; box.innerHTML = ''; return; }
+  const res = procurar(q);
+  const porUnid = {};
+  for (const o of res) (porUnid[o.unidade] = porUnid[o.unidade] || []).push(o);
+  const unids = Object.keys(porUnid).sort((a, b) => ORDEM_UNID.indexOf(a) - ORDEM_UNID.indexOf(b));
+  const MAX = 12;
+  const linha = o => `<div class="q-item" data-op="${esc(o.op)}" data-unidade="${esc(o.unidade)}" data-id="${esc(o.id)}" title="Abrir na tabela">
+      <div class="q1"><b>${realcar(o.op || '—', q)}</b>${o.ref ? `<span class="origem">${realcar(o.ref, q)}</span>` : ''}${o.pedido ? `<span class="origem">· ${realcar(o.pedido, q)}</span>` : ''}${o.urgente ? ' <span class="tag urg">urg</span>' : ''}</div>
+      <div class="q2">${realcar([o.cliente, o.produto, o.maquina ? 'máq. ' + o.maquina : '', o.fase].filter(Boolean).join(' · '), q)}</div>
+      <div class="q3"><span class="est ${o.estado}"><i></i>${esc(DADOS.estados[o.estado] || o.estado)}</span><div class="origem">${esc(o.estado_origem)}${o.plano_granularidade === 'semana' ? ' · S' + ((o.semana_plano || '').split('-W')[1] || '—') : (o.plano_granularidade === 'fila' ? ' · fila' : (o.data_plano ? ' · plano ' + dPT(o.data_plano) : ''))}${o.data_limite ? ' · limite ' + dPT(o.data_limite) : ''}</div><div class="origem">${o.real_inicio || o.real_fim ? `real ${dhPT(o.real_inicio)} → ${dhPT(o.real_fim)}` : ''}${o.qtd ? ` · ${nR(o.qtd)} un.` : ''}</div></div>
+    </div>`;
+  box.innerHTML = res.length ? `<div class="q-cab"><span><b>${res.length}</b> resultado${res.length === 1 ? '' : 's'} em <b>${unids.length}</b> unidade${unids.length === 1 ? '' : 's'} para "${esc(q)}"</span><span>Esc fecha · clique abre na tabela</span></div>`
+    + unids.map(u => { const l = porUnid[u]; const uni = DADOS.unidades.find(x => x.unidade === u); return `<div class="q-grupo"><h4>${esc(u)} <span>${l.length}</span>${uni ? `<a href="${esc(uni.url)}" target="_blank" rel="noopener">abrir app ↗</a>` : ''}</h4>${l.slice(0, MAX).map(linha).join('')}${l.length > MAX ? `<div class="q-mais">+ ${l.length - MAX} nesta unidade — refina a pesquisa</div>` : ''}</div>`; }).join('')
+    : `<div class="q-vazio">Nada encontrado para "${esc(q)}" em ${DADOS.ordens.length} ordens das 7 unidades (activas e fechadas).</div>`;
+  box.hidden = false;
+  $$('#qResultados .q-item').forEach(el => el.addEventListener('click', () => {
+    FILTRO.unidade = el.dataset.unidade; $('#fUnidade').value = FILTRO.unidade;
+    FILTRO.pesq = el.dataset.op; $('#fPesq').value = FILTRO.pesq;
+    FILTRO.kpi = ''; FILTRO.estado = ''; FILTRO.atrasos = false; FILTRO.hoje = false; FILTRO.fechadas = true; FILTRO.todas = true;
+    $('#fEstado').value = ''; $('#fAtrasos').checked = false; $('#fHoje').checked = false; $('#fFechadas').checked = true;
+    box.hidden = true;
+    renderKpis(); renderTabela();
+    $('#tabelaSec').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+}
 
 // ------------------------------------------------------------
 // Carregamento
@@ -58,6 +105,7 @@ function render() {
   if (!DADOS) return;
   document.body.classList.toggle('uma-unidade', !!ECRA);
   renderMeta(); renderFontes(); renderKpis(); renderAlertas(); renderMaquinas(); renderUnidades(); renderFiltros(); renderTabela();
+  if (!$('#qResultados').hidden) renderPesquisa();
   agendar();
 }
 
@@ -243,22 +291,19 @@ function renderFiltros() {
 }
 
 function filtrar() {
-  const p = FILTRO.pesq.trim().toLowerCase();
+  const toks = normTexto(FILTRO.pesq).split(' ').filter(Boolean); // mesma regra da pesquisa global: todas as palavras, sem acentos
   const hoje = DADOS.hoje;
   return DADOS.ordens.filter(o => {
     if (o.manutencao && FILTRO.estado !== 'em_processo') return false;
     if (FILTRO.unidade && o.unidade !== FILTRO.unidade) return false;
     if (FILTRO.estado) { if (o.estado !== FILTRO.estado) return false; }
-    else if (o.terminal) { if (!FILTRO.fechadas || !o.fechada_7d) return false; }
+    else if (o.terminal) { if (!FILTRO.fechadas || (!o.fechada_7d && !FILTRO.todas)) return false; }
     if (FILTRO.kpi === 'atraso_prazo' && !o.atraso_prazo) return false;
     if (FILTRO.kpi === 'atraso_plano' && !o.atraso_plano) return false;
     if (FILTRO.atrasos && !(o.atraso_prazo || o.atraso_plano)) return false;
     if (FILTRO.hoje && !o.hoje) return false;
     if (FILTRO.kpi === 'semana' && !o.semana) return false;
-    if (p) {
-      const txt = [o.op, o.ref, o.pedido, o.cliente, o.produto, o.maquina, o.estado_origem, o.obs].join(' ').toLowerCase();
-      if (!txt.includes(p)) return false;
-    }
+    if (toks.length) { const txt = textoPesquisa(o); if (!toks.every(t => txt.includes(t))) return false; }
     return true;
   });
 }
@@ -271,7 +316,7 @@ function ordenar(lista) {
 
 function renderTabela() {
   const lista = ordenar(filtrar());
-  $('#contagem').textContent = `${lista.length} ordens`;
+  $('#contagem').textContent = `${lista.length} ordens` + (FILTRO.todas && FILTRO.pesq ? ' · pesquisa global (inclui fechadas antigas)' : '');
   const linhas = lista.slice(0, 800).map(o => {
     const cls = o.em_curso ? 'proc' : (o.atraso_prazo ? 'prazo' : (o.atraso_plano ? 'plano' : ''));
     const atr = o.atraso_prazo ? `<span class="atr-prazo" title="prazo cliente">${o.atraso_prazo_dias} d</span>` : (o.atraso_plano ? `<span class="atr-plano" title="plano">${o.atraso_plano_dias} d</span>` : '—');
@@ -314,7 +359,11 @@ $('#fEstado').addEventListener('change', e => { FILTRO.estado = e.target.value; 
 $('#fAtrasos').addEventListener('change', e => { FILTRO.atrasos = e.target.checked; if (!e.target.checked && (FILTRO.kpi === 'atraso_prazo' || FILTRO.kpi === 'atraso_plano')) { FILTRO.kpi = ''; renderKpis(); } renderTabela(); });
 $('#fHoje').addEventListener('change', e => { FILTRO.hoje = e.target.checked; if (!e.target.checked && FILTRO.kpi === 'hoje') { FILTRO.kpi = ''; renderKpis(); } renderTabela(); });
 $('#fFechadas').addEventListener('change', e => { FILTRO.fechadas = e.target.checked; renderTabela(); });
-$('#fPesq').addEventListener('input', e => { FILTRO.pesq = e.target.value; renderTabela(); });
+$('#fPesq').addEventListener('input', e => { FILTRO.pesq = e.target.value; FILTRO.todas = false; renderTabela(); });
+$('#qGlobal').addEventListener('input', renderPesquisa);
+$('#qGlobal').addEventListener('focus', renderPesquisa);
+$('#qGlobal').addEventListener('keydown', e => { if (e.key === 'Escape') { $('#qResultados').hidden = true; e.target.blur(); } });
+document.addEventListener('click', e => { if (!e.target.closest('.pesq-global')) $('#qResultados').hidden = true; });
 $('#btnCsv').addEventListener('click', exportarCsv);
 $('#btnAlertas').addEventListener('click', () => { ALERTAS_TUDO = !ALERTAS_TUDO; renderAlertas(); });
 $('#selUnidade').addEventListener('change', e => {

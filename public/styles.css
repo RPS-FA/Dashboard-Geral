@@ -52,6 +52,29 @@ button, input, select { font: inherit; color: inherit; }
 .chip.velho .pt { background: var(--aviso); }
 .chip.falha { color: var(--critico); border-color: var(--critico); }
 
+/* ---- pesquisa global ---- */
+.pesq-global { position: relative; flex: 1 1 320px; max-width: 560px; }
+.pesq-global input { width: 100%; background: var(--plano); border: 1px solid var(--borda); border-radius: 8px; padding: 7px 12px; font-size: 13.5px; }
+.pesq-global input:focus { outline: 2px solid var(--realce); outline-offset: -1px; }
+.q-res { position: absolute; top: calc(100% + 6px); left: 0; right: 0; min-width: 560px; max-width: 90vw; max-height: 72vh; overflow: auto; background: var(--superficie); border: 1px solid var(--borda); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.18); z-index: 30; padding: 8px 0; }
+.q-res .q-cab { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 14px 8px; font-size: 12.5px; color: var(--ink-2); border-bottom: 1px solid var(--linha); }
+.q-res .q-cab b { color: var(--ink); }
+.q-res .q-grupo { padding: 6px 14px 4px; }
+.q-res .q-grupo h4 { margin: 4px 0 2px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); display: flex; gap: 8px; align-items: baseline; }
+.q-res .q-grupo h4 a { font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.q-res .q-item { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 6px 0; border-top: 1px solid var(--linha); cursor: pointer; font-size: 12.5px; }
+.q-res .q-item:hover { background: var(--plano); }
+.q-res .q-item .q1 b { font-size: 13px; }
+.q-res .q-item .q1 .origem { margin-left: 6px; }
+.q-res .q-item .q2 { color: var(--ink-2); font-size: 12px; grid-column: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-res .q-item .q3 { grid-column: 2; grid-row: 1 / span 2; text-align: right; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+.q-res .q-item .q3 .est { justify-content: flex-end; }
+.q-res .q-vazio { padding: 14px; color: var(--ink-3); font-size: 13px; }
+.q-res mark { background: rgba(250,178,25,.35); color: inherit; padding: 0 1px; border-radius: 2px; }
+.q-res .q-mais { padding: 8px 14px; font-size: 12px; color: var(--ink-3); }
+body.tv .pesq-global { display: none; }
+@media (max-width: 720px) { .pesq-global { flex-basis: 100%; max-width: none; } .q-res { min-width: 0; left: 0; right: 0; } }
+
 /* ---- conteúdo ---- */
 main { padding: 16px 20px 40px; max-width: 1700px; margin: 0 auto; transition: opacity .25s; }
 main.a-actualizar { opacity: .6; }

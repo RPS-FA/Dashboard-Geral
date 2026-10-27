@@ -117,7 +117,16 @@ function minutosDesde(local, agora) {
   return Math.max(0, Math.round((agora.getTime() - utc) / 60000));
 }
 
+/** Texto para pesquisa: minúsculas, sem acentos, espaços colapsados. */
+function normTexto(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+
+/** Campos de uma ordem usados na pesquisa global. */
+const CAMPOS_PESQUISA = ['op', 'ref', 'pedido', 'cliente', 'produto', 'calibre', 'maquina', 'fase', 'estado_origem', 'obs', 'unidade'];
+function textoPesquisa(o) { return normTexto(CAMPOS_PESQUISA.map(k => o[k]).filter(Boolean).join(' | ')); }
+/** Todas as palavras da pesquisa têm de aparecer (em qualquer campo). Devolve true/false. */
+function corresponde(texto, q) { const toks = normTexto(q).split(' ').filter(Boolean); return toks.length > 0 && toks.every(t => texto.includes(t)); }
+
 function num(v) { if (v == null || v === '') return 0; const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; }
 function limpa(s) { return s == null ? '' : String(s).replace(/\s+/g, ' ').trim(); }
 
-module.exports = { TZ, hoje, dataLisboa, horaLisboa, addDias, difDias, semanaISO, segundaDaSemana, domingoDaSemana, paraData, dataHora, isoParaLocal, paraMinutos, minutosDesde, num, limpa };
+module.exports = { TZ, hoje, dataLisboa, horaLisboa, addDias, difDias, semanaISO, segundaDaSemana, domingoDaSemana, paraData, dataHora, isoParaLocal, paraMinutos, minutosDesde, normTexto, textoPesquisa, corresponde, CAMPOS_PESQUISA, num, limpa };

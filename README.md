@@ -42,6 +42,12 @@ Lista o que precisa de acção, agrupado por tipo e ordenado por gravidade. Clic
 | Plano antigo por fechar | activa com dia planeado há mais de N dias | `ALERTA_PLANO_DIAS` (14) |
 | Espera JOB há demasiado tempo | terminada à espera de JOB SAP | `ALERTA_JOB_DIAS` (7) |
 
+## Pesquisa global
+
+A caixa no cabeçalho procura **em todos os planeamentos ao mesmo tempo** — todas as unidades, ordens activas e fechadas — por OP, lote, pedido/encomenda, cliente, produto, calibre, máquina, fase, estado de origem e observações. Várias palavras = todas têm de aparecer (`csu 45x240`); acentos e maiúsculas são ignorados. Os resultados agrupam-se por unidade (máx. 12 por unidade); clicar numa ordem abre-a na tabela (activa o filtro "incluir fechadas", mesmo que seja antiga). `Esc` fecha.
+
+Alcance = o que cada app guarda: WIM, VOCUS, DS100, PureCork, Densidades e DSL devolvem o histórico completo que têm; **DSL Talis só o mês actual e o anterior** (`/api/estado?mes=`). Ordens apagadas nas apps não aparecem. API: `GET /api/procurar?q=…` (máx. 200 resultados).
+
 ## Ecrã por unidade
 
 `?tv=1&unidade=DSL` (ou o selector "Ecrã" no cabeçalho) mostra só essa unidade: KPIs da unidade, excepções da unidade e as suas máquinas em letra grande — um ecrã por secção no chão de fábrica. Unidades: `WIM`, `VOCUS`, `DS100`, `PURECORK`, `DENSIDADES`, `DSL`, `DSL TALIS`.
@@ -96,6 +102,7 @@ Variáveis de ambiente (opcionais): `PORT`, `REFRESH_SEC` (defeito 60), `TIMEOUT
 
 - `GET /` — dashboard. `?tv=1` abre em modo ecrã (indicadores + grelha de máquinas; cabe num 1080p).
 - `GET /api/resumo` — indicadores por unidade, painel de máquinas, excepções (`alertas`) e lista de ordens enriquecidas. `?so=kpi` omite a lista.
+- `GET /api/procurar?q=…` — pesquisa global (todas as unidades, activas e fechadas; todas as palavras têm de aparecer).
 - `POST /api/refresh` — força nova leitura das fontes.
 - `GET /health` — `{status, fontes_ok, fontes_total, ultima_agregacao}`.
 

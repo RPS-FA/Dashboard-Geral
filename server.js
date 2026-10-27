@@ -5,6 +5,7 @@
 //   GET /                 — dashboard (public/index.html)
 //   GET /api/resumo       — indicadores + ordens enriquecidas (JSON)
 //   GET /api/resumo?so=kpi — só indicadores (sem a lista de ordens)
+//   GET /api/procurar?q=… — pesquisa global (todas as unidades, activas e fechadas)
 //   POST /api/refresh     — força nova leitura das fontes
 //   GET /health
 // Só faz GET às apps de origem. Não tem base de dados.
@@ -32,6 +33,17 @@ app.get('/api/resumo', (req, res) => {
     if (req.query.so === 'kpi') delete r.ordens;
     res.json(r);
   } catch (e) { console.error('[api] resumo', e); res.status(500).json({ ok: false, error: e.message }); }
+});
+// Pesquisa global: GET /api/procurar?q=LT02386299  -> ordens de TODAS as unidades (activas e fechadas) que contêm todas as palavras
+app.get('/api/procurar', (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) return res.json({ q, n: 0, resultados: [] });
+    const U = require('./src/util');
+    const r = agregador.resumo();
+    const resultados = r.ordens.filter(o => U.corresponde(U.textoPesquisa(o), q)).slice(0, 200);
+    res.json({ q, hoje: r.hoje, n: resultados.length, resultados });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/refresh', async (_req, res) => {
   try { await agregador.actualizar(); res.json({ ok: true, ultima_agregacao: agregador.resumo().ultima_agregacao }); }
