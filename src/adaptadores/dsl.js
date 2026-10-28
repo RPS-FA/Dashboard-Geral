@@ -19,36 +19,40 @@ async function carregar(fonte, http) {
   const maquinas = Object.keys(s.calibresPorLinha || s.capacidades || {}).sort((a, b) => (parseInt(a, 10) || 99) - (parseInt(b, 10) || 99) || a.localeCompare(b)).map(nomeLinha);
   if (!maquinas.includes('EM')) maquinas.push('EM');
   const out = [];
+  const registosErro = []; // registos com dados inesperados: ignora-se o registo, não a fonte
   for (const o of ops) {
-    let estado = E.normalizar(o.estado);
-    if (o.buffer && !E.terminal(estado) && estado !== 'em_processo') estado = 'pre';
-    const atraso = U.paraMinutos(o.tempoAtraso) + U.paraMinutos(o.temposPerdidosAvaria);
-    const linha = U.limpa(o.linha);
-    const diaPlano = U.paraData(o.diaPlano);
-    out.push({
-      fonte: fonte.id, unidade: fonte.unidade,
-      id: `${fonte.id}-${o.id}`,
-      op: U.limpa(o.op) || U.limpa(o.dsl), ref: U.limpa(o.lote), pedido: U.limpa(o.po),
-      cliente: U.limpa(o.cliente), produto: U.limpa(o.produtoEntrada), calibre: U.limpa(o.calibre),
-      qtd: Math.round(U.num(o.qtd) * 1000),
-      maquina: o.buffer ? null : nomeLinha(linha),
-      fase: [U.limpa(o.dslTipo), o.turno ? `T${o.turno}` : ''].filter(Boolean).join(' · ') || null,
-      fila: U.num(o.sortIdx),
-      estado, estado_origem: U.limpa(o.estado) + (o.buffer ? ' (Buffer)' : ''), estado_derivado: false,
-      data_plano: diaPlano, data_fim_plano: diaPlano,
-      semana_plano: o.weekKey || null, plano_granularidade: 'dia',
-      hora_plano_ini: U.limpa(o.hInicioP) || null, hora_plano_fim: null,
-      data_limite: null, data_log: null,
-      real_inicio: o.hInicioR ? U.dataHora(o.dataInicioR || o.diaPlano, o.hInicioR) : null,
-      real_fim: o.hFimR ? U.dataHora(o.dataFimR || o.dataInicioR || o.diaPlano, o.hFimR) : null,
-      atraso_prod_min: atraso, motivo_paragem: U.limpa(o.motivoParagem),
-      urgente: !!o.urgente, manutencao: false,
-      obs: U.limpa([o.obs, o.obsProd, o.faltas ? `faltas: ${o.faltas}` : '', o.proximoPasso ? `→ ${o.proximoPasso}` : ''].filter(Boolean).join(' · ')),
-      atualizado: null,
-      link: fonte.url,
-    });
+    try {
+      let estado = E.normalizar(o.estado);
+      if (o.buffer && !E.terminal(estado) && estado !== 'em_processo') estado = 'pre';
+      const atraso = U.paraMinutos(o.tempoAtraso) + U.paraMinutos(o.temposPerdidosAvaria);
+      const linha = U.limpa(o.linha);
+      const diaPlano = U.paraData(o.diaPlano);
+      out.push({
+        fonte: fonte.id, unidade: fonte.unidade,
+        id: `${fonte.id}-${o.id}`,
+        op: U.limpa(o.op) || U.limpa(o.dsl), ref: U.limpa(o.lote), pedido: U.limpa(o.po),
+        cliente: U.limpa(o.cliente), produto: U.limpa(o.produtoEntrada), calibre: U.limpa(o.calibre),
+        qtd: Math.round(U.num(o.qtd) * 1000),
+        maquina: o.buffer ? null : nomeLinha(linha),
+        fase: [U.limpa(o.dslTipo), o.turno ? `T${o.turno}` : ''].filter(Boolean).join(' · ') || null,
+        fila: U.num(o.sortIdx),
+        estado, estado_origem: U.limpa(o.estado) + (o.buffer ? ' (Buffer)' : ''), estado_derivado: false,
+        data_plano: diaPlano, data_fim_plano: diaPlano,
+        semana_plano: o.weekKey || null, plano_granularidade: 'dia',
+        hora_plano_ini: U.limpa(o.hInicioP) || null, hora_plano_fim: null,
+        data_limite: null, data_log: null,
+        real_inicio: o.hInicioR ? U.dataHora(o.dataInicioR || o.diaPlano, o.hInicioR) : null,
+        real_fim: o.hFimR ? U.dataHora(o.dataFimR || o.dataInicioR || o.diaPlano, o.hFimR) : null,
+        atraso_prod_min: atraso, motivo_paragem: U.limpa(o.motivoParagem),
+        urgente: !!o.urgente, manutencao: false,
+        obs: U.limpa([o.obs, o.obsProd, o.faltas ? `faltas: ${o.faltas}` : '', o.proximoPasso ? `→ ${o.proximoPasso}` : ''].filter(Boolean).join(' · ')),
+        atualizado: null,
+        link: fonte.url,
+      });
+  
+    } catch (e) { registosErro.push(`${(o && (o.id ?? o.op)) || "?"}: ${e.message}`); }
   }
-  return { ordens: out, maquinas, ts: st.ts || null, granularidade: 'dia' };
+  return { ordens: out, maquinas, erros_registos: registosErro, ts: st.ts || null, granularidade: 'dia' };
 }
 
 module.exports = { carregar };

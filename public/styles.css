@@ -143,6 +143,8 @@ main.a-carregar section { visibility: hidden; }
 .ocol-cab .ocol-h { color: #fff; background: var(--critico); border-radius: 999px; padding: 0 7px; font-size: 11px; font-weight: 700; }
 .ocol-cab .ocol-a { color: #000; background: var(--aviso); border-radius: 999px; padding: 0 7px; font-size: 11px; font-weight: 700; }
 .ocol-cab .ocol-x { color: var(--critico); font-weight: 700; }
+.ocol-cab .ocol-w { color: var(--aviso); font-weight: 700; cursor: help; }
+.ocol-vazia b { color: var(--critico); }
 .ocol-cards { display: flex; flex-direction: column; gap: 8px; }
 .ocols.uma .ocol-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; }
 .ocol-vazia { color: var(--ink-3); font-size: 12px; padding: 10px 4px; }

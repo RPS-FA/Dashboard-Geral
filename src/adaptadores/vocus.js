@@ -30,37 +30,41 @@ async function carregar(fonte, http) {
   const plano = P.calcularPlano(ops, settings); // id -> {start, end} (Date locais, TZ=Europe/Lisbon)
   const maquinas = [...MAQUINAS_DEFEITO];
   const out = [];
+  const registosErro = []; // registos com dados inesperados: ignora-se o registo, não a fonte
   for (const o of ops) {
-    const wk = o.weekKey || null;
-    const kanban = String(o.maquina || '').toUpperCase() === 'KANBAN';
-    if (o.maquina && !kanban && !maquinas.includes(o.maquina)) maquinas.push(o.maquina);
-    const reproc = U.num(o.reprocessoC5);
-    const pl = plano.get(o.id) || null;
-    let estado = E.normalizar(o.estado);
-    if (kanban && !E.terminal(estado)) estado = 'pre';
-    out.push({
-      fonte: fonte.id, unidade: fonte.unidade,
-      id: `${fonte.id}-${o.id}`,
-      op: U.limpa(o.op), ref: U.limpa(o.operacao), pedido: U.limpa(o.po),
-      cliente: U.limpa(o.cliente), produto: U.limpa(o.desc), calibre: '',
-      qtd: U.num(o.qc) || U.num(o.qds),
-      maquina: kanban ? null : (U.limpa(o.maquina) || null), fase: U.limpa(o.operacao) || null,
-      fila: filaIdx(wk, o.sortIdx),
-      estado, estado_origem: U.limpa(o.estado) + (kanban ? ' (KANBAN)' : ''), estado_derivado: false,
-      data_plano: pl ? P.dataLocal(pl.start) : null, data_fim_plano: pl ? P.dataLocal(pl.end) : null,
-      semana_plano: wk, plano_granularidade: pl ? 'dia' : 'fila', plano_fila: true,
-      hora_plano_ini: pl ? P.horaLocal(pl.start) : null, hora_plano_fim: pl ? P.horaLocal(pl.end) : null,
-      plano_manual: !!(pl && pl.manual),
-      data_limite: U.paraData(o.dlim), data_log: U.paraData(o.dlog),
-      real_inicio: U.isoParaLocal(o.realStart), real_fim: U.isoParaLocal(o.realEnd),
-      atraso_prod_min: 0, motivo_paragem: '',
-      urgente: false, manutencao: false,
-      obs: U.limpa([o.obs, reproc ? `reprocesso C5 ${U.num(reproc)} un.` : '', o.qreal ? `real ${o.qreal} un.` : '', pl && pl.manual ? 'início manual' : '', settingsErro ? 'plano com settings por defeito (settings da app indisponíveis)' : ''].filter(Boolean).join(' · ')),
-      atualizado: o._ts || null,
-      link: fonte.url,
-    });
+    try {
+      const wk = o.weekKey || null;
+      const kanban = String(o.maquina || '').toUpperCase() === 'KANBAN';
+      if (o.maquina && !kanban && !maquinas.includes(o.maquina)) maquinas.push(o.maquina);
+      const reproc = U.num(o.reprocessoC5);
+      const pl = plano.get(o.id) || null;
+      let estado = E.normalizar(o.estado);
+      if (kanban && !E.terminal(estado)) estado = 'pre';
+      out.push({
+        fonte: fonte.id, unidade: fonte.unidade,
+        id: `${fonte.id}-${o.id}`,
+        op: U.limpa(o.op), ref: U.limpa(o.operacao), pedido: U.limpa(o.po),
+        cliente: U.limpa(o.cliente), produto: U.limpa(o.desc), calibre: '',
+        qtd: U.num(o.qc) || U.num(o.qds),
+        maquina: kanban ? null : (U.limpa(o.maquina) || null), fase: U.limpa(o.operacao) || null,
+        fila: filaIdx(wk, o.sortIdx),
+        estado, estado_origem: U.limpa(o.estado) + (kanban ? ' (KANBAN)' : ''), estado_derivado: false,
+        data_plano: pl ? P.dataLocal(pl.start) : null, data_fim_plano: pl ? P.dataLocal(pl.end) : null,
+        semana_plano: wk, plano_granularidade: pl ? 'dia' : 'fila', plano_fila: true,
+        hora_plano_ini: pl ? P.horaLocal(pl.start) : null, hora_plano_fim: pl ? P.horaLocal(pl.end) : null,
+        plano_manual: !!(pl && pl.manual),
+        data_limite: U.paraData(o.dlim), data_log: U.paraData(o.dlog),
+        real_inicio: U.isoParaLocal(o.realStart), real_fim: U.isoParaLocal(o.realEnd),
+        atraso_prod_min: 0, motivo_paragem: '',
+        urgente: false, manutencao: false,
+        obs: U.limpa([o.obs, reproc ? `reprocesso C5 ${U.num(reproc)} un.` : '', o.qreal ? `real ${o.qreal} un.` : '', pl && pl.manual ? 'início manual' : '', settingsErro ? 'plano com settings por defeito (settings da app indisponíveis)' : ''].filter(Boolean).join(' · ')),
+        atualizado: o._ts || null,
+        link: fonte.url,
+      });
+  
+    } catch (e) { registosErro.push(`${(o && (o.id ?? o.op)) || "?"}: ${e.message}`); }
   }
-  return { ordens: out, maquinas, ts: (r.meta && r.meta.updatedAt) || null, granularidade: 'dia' };
+  return { ordens: out, maquinas, erros_registos: registosErro, ts: (r.meta && r.meta.updatedAt) || null, granularidade: 'dia' };
 }
 
 module.exports = { carregar };

@@ -142,8 +142,8 @@ function renderMeta() {
 function renderFontes() {
   $('#fontes').innerHTML = DADOS.unidades.map(u => {
     const f = u.fonte;
-    const cls = !f.ok ? 'falha' : (f.idade_min != null && f.idade_min > 10 ? 'velho' : 'ok');
-    const tit = f.ok ? `OK · ${f.n} registos · ${f.ms} ms · lida há ${f.idade_min ?? 0} min` : `FALHA: ${f.erro || '?'}${f.ultima_ok ? ' · última leitura boa ' + new Date(f.ultima_ok).toLocaleString('pt-PT') : ''}`;
+    const cls = !f.ok ? 'falha' : (f.idade_min != null && f.idade_min > 10 ? 'velho' : (f.registos_ignorados ? 'velho' : 'ok'));
+    const tit = f.ok ? `OK · ${f.n} registos · ${f.ms} ms · lida há ${f.idade_min ?? 0} min${f.registos_ignorados ? `\n${f.registos_ignorados} registo(s) ignorado(s) por dados inesperados:\n` + (f.registos_erro || []).join('\n') : ''}` : `FALHA: ${f.erro || '?'}${f.ultima_ok ? ' · última leitura boa ' + new Date(f.ultima_ok).toLocaleString('pt-PT') : ' · nunca lida desde o arranque'}\n${f.url || ''}`;
     return `<span class="chip ${cls}" title="${esc(tit)}"><i class="pt"></i>${esc(u.unidade)}</span>`;
   }).join('');
 }
@@ -269,8 +269,8 @@ function renderOps() {
     const mostrar = l.slice(0, MAX); escondidas += l.length - mostrar.length;
     const f = u.fonte;
     return `<div class="ocol${l.length ? '' : ' vazia'}${f.ok ? '' : ' falha'}" data-unidade="${esc(u.unidade)}">
-      <div class="ocol-cab" title="${esc(u.nome)}${f.ok ? '' : ' — SEM LIGAÇÃO: ' + (f.erro || '')}"><b>${esc(u.unidade)}</b><span class="ocol-n">${l.length}</span>${nH ? `<span class="ocol-h" title="para hoje">${nH}</span>` : ''}${nA ? `<span class="ocol-a" title="D+1 e D+2">${nA}</span>` : ''}${f.ok ? '' : '<span class="ocol-x" title="app sem ligação">✕</span>'}</div>
-      <div class="ocol-cards">${mostrar.map(cartao).join('') || `<div class="ocol-vazia">${f.ok ? 'nada por abrir' : 'sem ligação à app'}</div>`}</div>
+      <div class="ocol-cab" title="${esc(u.nome)}${f.ok ? '' : ' — SEM LEITURA: ' + (f.erro || '')}${f.registos_ignorados ? ` — ${f.registos_ignorados} registo(s) ignorado(s): ` + esc((f.registos_erro || []).join('; ')) : ''}"><b>${esc(u.unidade)}</b><span class="ocol-n">${l.length}</span>${nH ? `<span class="ocol-h" title="para hoje">${nH}</span>` : ''}${nA ? `<span class="ocol-a" title="D+1 e D+2">${nA}</span>` : ''}${f.ok ? (f.registos_ignorados ? `<span class="ocol-w" title="${esc(f.registos_ignorados + ' registo(s) ignorado(s): ' + (f.registos_erro || []).join('; '))}">⚠</span>` : '') : '<span class="ocol-x" title="app sem leitura">✕</span>'}</div>
+      <div class="ocol-cards">${mostrar.map(cartao).join('') || `<div class="ocol-vazia">${f.ok ? 'nada por abrir' : `<b>sem leitura da app</b><br>${esc(f.erro || '')}<br><span class="origem">${f.ultima_ok ? 'última leitura boa ' + new Date(f.ultima_ok).toLocaleString('pt-PT') : 'nunca lida desde o arranque'} · <a href="${esc(u.url)}" target="_blank" rel="noopener">abrir app ↗</a></span>`}</div>`}</div>
       ${l.length > MAX ? `<div class="ocol-mais">+ ${l.length - MAX}</div>` : ''}
     </div>`;
   }).join('');

@@ -60,6 +60,8 @@ async function lerFonte(fonte) {
     const r = await ADAPTADORES[fonte.adaptador].carregar(fonte, httpJson);
     c.ordens = r.ordens; c.maquinas = r.maquinas || []; c.granularidade = r.granularidade || 'dia';
     c.ok = true; c.erro = null; c.ultima_ok = c.ultima_tentativa; c.n = r.ordens.length; c.ts_fonte = r.ts || null;
+    c.registos_erro = Array.isArray(r.erros_registos) ? r.erros_registos.slice(0, 20) : [];
+    if (c.registos_erro.length) console.warn(`[agregador] ${fonte.id}: ${c.registos_erro.length} registo(s) ignorado(s) por dados inesperados — ${c.registos_erro.slice(0, 3).join(' | ')}`);
   } catch (e) {
     c.ok = false; c.erro = (e && e.message) || String(e);
     console.warn(`[agregador] ${fonte.id}: ${c.erro}`);
@@ -96,7 +98,7 @@ function resumo() {
     maqTotal += r.maquinas.length; maqEmProcesso += r.maquinas.filter(m => m.estado === 'em_processo').length;
     unidades.push({
       id: f.id, unidade: f.unidade, nome: f.nome, url: f.url,
-      fonte: { ok: c.ok, erro: c.erro, ultima_ok: c.ultima_ok, ultima_tentativa: c.ultima_tentativa, ms: c.ms, n: c.n, ts_fonte: c.ts_fonte, idade_min: c.ultima_ok ? Math.round((Date.now() - new Date(c.ultima_ok)) / 60000) : null },
+      fonte: { ok: c.ok, erro: c.erro, ultima_ok: c.ultima_ok, ultima_tentativa: c.ultima_tentativa, ms: c.ms, n: c.n, ts_fonte: c.ts_fonte, idade_min: c.ultima_ok ? Math.round((Date.now() - new Date(c.ultima_ok)) / 60000) : null, registos_ignorados: (c.registos_erro || []).length, registos_erro: c.registos_erro || [] },
       kpi: r.kpi,
       em_curso: r.em_curso.slice(0, 12),
       maquinas: r.maquinas,

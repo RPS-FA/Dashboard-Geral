@@ -309,7 +309,14 @@
    "i_estado": "Aberto",
    "i_wk": "",
    "i_dia": 0,
-   "i_maq": ""
+   "i_maq": "",
+   "i_real": [
+    null,
+    {
+     "i": "15:20",
+     "f": "16:00"
+    }
+   ]
   },
   {
    "cleanTpl": false,

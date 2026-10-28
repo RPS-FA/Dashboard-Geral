@@ -115,7 +115,11 @@ Variáveis de ambiente (opcionais): `PORT`, `REFRESH_SEC` (defeito 60), `TIMEOUT
 
 ## Resiliência
 
-Cada fonte é lida em paralelo com timeout. Se uma falhar, o dashboard mantém a **última leitura boa** dessa fonte e marca-a a vermelho no cabeçalho (com o erro e a hora da última leitura boa). As outras continuam normais.
+Cada fonte é lida em paralelo com timeout. Se uma falhar, o dashboard mantém a **última leitura boa** dessa fonte e marca-a a vermelho no cabeçalho e na coluna (com o erro, a hora da última leitura boa e ligação à app). As outras continuam normais.
+
+Um **registo** com dados inesperados (ex.: WIM guardou `i_real: [null, {...}]` a 28/10/2026) é ignorado e contado — nunca derruba a fonte inteira: o chip fica amarelo e a coluna mostra ⚠ com a lista (`fonte.registos_ignorados` / `registos_erro` na API).
+
+Como verificar uma "sem leitura": passar o rato no chip da unidade (cabeçalho) ou no cabeçalho da coluna → erro exacto; `GET /api/resumo?so=kpi` → `unidades[].fonte` (`ok`, `erro`, `ultima_ok`, `ultima_tentativa`, `ms`, `registos_erro`); logs do serviço no Railway (`[agregador] <fonte>: <erro>`).
 
 ## Estrutura
 
