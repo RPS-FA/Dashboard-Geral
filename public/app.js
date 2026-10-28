@@ -187,44 +187,79 @@ function renderKpis() {
 // ------------------------------------------------------------
 // OPs por abrir
 // ------------------------------------------------------------
-function opsVisiveis() { return (DADOS.ops_por_abrir || []).filter(o => !ECRA || o.unidade === ECRA); }
+// Filtro de datas (dia planeado): D-1 = plano até amanhã (inclui hoje e atrasadas), D-2, D-3, personalizado (de…até), todas
+const PARAMS = new URLSearchParams(location.search);
+let FDATA = { modo: PARAMS.get('dias') ? (PARAMS.get('dias') === 'todas' ? 'todas' : 'd' + PARAMS.get('dias')) : (PARAMS.get('de') || PARAMS.get('ate') ? 'custom' : 'd3'), de: PARAMS.get('de') || '', ate: PARAMS.get('ate') || '' };
+const refPlano = o => o.data_plano || (o.semana_plano ? segundaISO(o.semana_plano) : null);
+function segundaISO(wk) { const m = /(\d{4})-W(\d{1,2})/.exec(wk || ''); if (!m) return null; const j4 = new Date(Date.UTC(+m[1], 0, 4)); const dn = (j4.getUTCDay() + 6) % 7; j4.setUTCDate(j4.getUTCDate() - dn + (+m[2] - 1) * 7); return j4.toISOString().slice(0, 10); }
+function passaData(o) {
+  const m = FDATA.modo;
+  if (m === 'todas') return true;
+  if (m === 'custom') { const r = refPlano(o); if (!r) return false; return (!FDATA.de || r >= FDATA.de) && (!FDATA.ate || r <= FDATA.ate); }
+  const n = +m.slice(1); return o.dias_plano != null && o.dias_plano <= n;
+}
+function opsUnidade() { return (DADOS.ops_por_abrir || []).filter(o => !ECRA || o.unidade === ECRA); }
+function opsVisiveis() { return opsUnidade().filter(passaData); }
+function definirFiltroData(modo, de, ate) {
+  FDATA = { modo, de: de || '', ate: ate || '' };
+  const u = new URL(location.href); u.searchParams.delete('dias'); u.searchParams.delete('de'); u.searchParams.delete('ate');
+  if (modo === 'todas') u.searchParams.set('dias', 'todas'); else if (modo === 'custom') { if (FDATA.de) u.searchParams.set('de', FDATA.de); if (FDATA.ate) u.searchParams.set('ate', FDATA.ate); } else if (modo !== 'd3') u.searchParams.set('dias', modo.slice(1));
+  history.replaceState(null, '', u); OPS_TUDO = false; renderOps();
+}
+const classeDias = o => o.dias_plano == null ? 'semdata' : (o.dias_plano <= 1 ? 'd1' : (o.dias_plano === 2 ? 'd2' : 'd3mais'));
+function etiquetaDias(o) {
+  const d = o.dias_plano;
+  if (d == null) return 'sem data';
+  if (d < 0) return `atrasada · há ${-d} d`;
+  if (d === 0) return 'HOJE';
+  if (d === 1) return 'AMANHÃ · D-1';
+  return `em ${d} d${d === 2 ? ' · D-2' : (d === 3 ? ' · D-3' : '')}`;
+}
 function renderOps() {
   const todas = DADOS.ops_por_abrir || [];
+  const daUnidade = opsUnidade();
   const lista = opsVisiveis();
   const porU = {}; for (const o of todas) porU[o.unidade] = (porU[o.unidade] || 0) + 1;
   $('#opsChips').innerHTML = DADOS.unidades.map(u => `<button type="button" class="chip${ECRA === u.unidade ? ' activo' : ''}${porU[u.unidade] ? '' : ' zero'}" data-unidade="${esc(u.unidade)}" title="${porU[u.unidade] ? 'só ' + u.unidade : u.unidade + ': nada por abrir'}">${esc(u.unidade)} <b>${porU[u.unidade] || 0}</b></button>`).join('');
   $$('#opsChips .chip').forEach(el => el.addEventListener('click', () => definirEcra(ECRA === el.dataset.unidade ? '' : el.dataset.unidade)));
-  const passado = lista.filter(o => o.sem_op_nivel === 'critico').length, prox = lista.filter(o => o.sem_op_nivel === 'serio').length;
-  $('#opsResumo').textContent = lista.length ? `${lista.length} ordens activas sem número de OP · ${passado} com plano já passado/hoje · ${prox} nos próximos 7 dias` : 'todas as ordens activas têm número de OP';
+  // filtros rápidos de data (contagens sobre a unidade escolhida)
+  const nAte = n => daUnidade.filter(o => o.dias_plano != null && o.dias_plano <= n).length;
+  const btn = (modo, rot, n, tit) => `<button type="button" class="fd ${modo}${FDATA.modo === modo ? ' activo' : ''}" data-modo="${modo}" title="${esc(tit)}">${rot} <b>${n}</b></button>`;
+  $('#opsFiltroData').innerHTML = btn('d1', 'D-1', nAte(1), 'plano amanhã, hoje ou já passado — a OP tem de ser aberta hoje')
+    + btn('d2', 'D-2', nAte(2), 'plano até depois de amanhã') + btn('d3', 'D-3', nAte(3), 'plano nos próximos 3 dias')
+    + btn('todas', 'Todas', daUnidade.length, 'sem horizonte')
+    + `<span class="fd-custom${FDATA.modo === 'custom' ? ' activo' : ''}"><button type="button" class="fd custom${FDATA.modo === 'custom' ? ' activo' : ''}" data-modo="custom" title="intervalo de dias planeados">Personalizado</button>
+       <label>de <input type="date" id="fdDe" value="${esc(FDATA.de)}"></label><label>até <input type="date" id="fdAte" value="${esc(FDATA.ate)}"></label></span>`;
+  $$('#opsFiltroData .fd').forEach(b => b.addEventListener('click', () => { const m = b.dataset.modo; if (m === 'custom') { const de = $('#fdDe').value || DADOS.hoje, ate = $('#fdAte').value || de; definirFiltroData('custom', de, ate); } else definirFiltroData(m); }));
+  const aoMudarData = () => { const de = $('#fdDe').value, ate = $('#fdAte').value; if (de || ate) definirFiltroData('custom', de, ate); };
+  $('#fdDe').addEventListener('change', aoMudarData); $('#fdAte').addEventListener('change', aoMudarData);
+  const d1 = lista.filter(o => classeDias(o) === 'd1').length, d2 = lista.filter(o => classeDias(o) === 'd2').length;
+  const descFiltro = FDATA.modo === 'todas' ? 'todas as datas' : (FDATA.modo === 'custom' ? `plano de ${dPT(FDATA.de) === '—' ? '…' : dPT(FDATA.de)} até ${dPT(FDATA.ate) === '—' ? '…' : dPT(FDATA.ate)}` : `plano até ${FDATA.modo.toUpperCase().replace('D', 'D-')}`);
+  $('#opsResumo').textContent = lista.length ? `${lista.length} sem número de OP (${descFiltro}) · ${d1} para amanhã/hoje/atrasadas · ${d2} para depois de amanhã` : (daUnidade.length ? `nenhuma neste filtro (${descFiltro}); ${daUnidade.length} no total` : 'todas as ordens activas têm número de OP');
   const tv = document.body.classList.contains('tv');
-  const MAX = tv ? 22 : (OPS_TUDO ? 5000 : 60);
-  $('#opsBody').innerHTML = lista.length ? lista.slice(0, MAX).map(o => `<tr class="${o.sem_op_nivel}" data-id="${esc(o.id)}" title="Ver detalhe">
-      <td><i class="pt"></i>${esc(o.unidade)}</td>
-      <td title="${esc(o.data_plano || o.semana_plano || '')}${o.plano_granularidade !== 'dia' ? ' (plano à semana: conta a segunda-feira)' : ''}">${esc(planoTxt(o))}</td>
-      <td class="num dias">${esc(diasTxt(o))}</td>
-      <td class="opcampo"><b>${esc(o.op || '(vazio)')}</b>${o.ref && o.ref !== o.op ? `<div class="origem">${esc(o.ref)}</div>` : ''}${o.urgente ? ' <span class="tag urg">urg</span>' : ''}</td>
-      <td class="pedido">${esc(o.pedido || '—')}</td>
-      <td class="cliente" title="${esc(o.cliente)}">${esc(o.cliente || '—')}</td>
-      <td class="produto" title="${esc(o.produto)}">${esc(o.produto || '—')}${o.calibre ? `<div class="origem">${esc(o.calibre)}</div>` : ''}</td>
-      <td class="num">${o.qtd ? nR(o.qtd) : '—'}</td>
-      <td class="maqc" title="${esc([o.maquina, o.fase].filter(Boolean).join(' · '))}">${esc(o.maquina || '—')}${o.fase ? `<div class="origem">${esc(o.fase)}</div>` : ''}</td>
-      <td><span class="est ${o.estado}" title="${esc(DADOS.estados[o.estado] || '')}"><i></i>${esc(o.estado_origem || DADOS.estados[o.estado])}</span></td>
-      <td class="obs" title="${esc(o.obs)}">${esc(o.obs || '')}</td>
-      <td class="lnk"><a href="${esc((unidade(o.unidade) || {}).url || '#')}" target="_blank" rel="noopener" title="abrir a app de ${esc(o.unidade)}">↗</a></td>
-    </tr>`).join('') : '<tr><td colspan="12" class="vazio-ok">✔ Todas as ordens activas têm número de OP.</td></tr>';
+  const MAX = tv ? 15 : (OPS_TUDO ? 5000 : 60);
+  $('#opsCards').innerHTML = lista.length ? lista.slice(0, MAX).map(o => `<article class="ocard ${classeDias(o)} ${o.sem_op_nivel}" data-id="${esc(o.id)}" title="Ver detalhe">
+      <div class="oc-cab"><span class="oc-unid">${esc(o.unidade)}</span><span class="oc-dias">${esc(etiquetaDias(o))}</span></div>
+      <div class="oc-op"><b>${esc(o.op || '(campo OP vazio)')}</b>${o.urgente ? ' <span class="tag urg">urg</span>' : ''}</div>
+      <div class="oc-plano">plano <b>${esc(planoTxt(o))}</b>${o.plano_granularidade !== 'dia' ? ' <span class="origem">(semana → 2.ª feira)</span>' : ''}${o.data_limite ? ` · limite ${dPT(o.data_limite)}` : ''}</div>
+      <div class="oc-det" title="${esc([o.cliente, o.produto, o.calibre].filter(Boolean).join(' · '))}">${esc(o.cliente || '—')} · ${esc(o.produto || '—')}${o.calibre ? ' · ' + esc(o.calibre) : ''}</div>
+      <div class="oc-lin"><span>${o.pedido ? 'pedido ' + esc(o.pedido) : ''}${o.ref && o.ref !== o.op ? (o.pedido ? ' · ' : '') + esc(o.ref) : ''}</span><span>${o.qtd ? nR(o.qtd) + ' un.' : ''}</span></div>
+      <div class="oc-rod"><span class="est ${o.estado}" title="${esc(DADOS.estados[o.estado] || '')}"><i></i>${esc(o.estado_origem || DADOS.estados[o.estado])}</span><span class="oc-maq" title="${esc([o.maquina, o.fase].filter(Boolean).join(' · '))}">${esc(o.maquina || '')}</span><a class="oc-lnk" href="${esc((unidade(o.unidade) || {}).url || '#')}" target="_blank" rel="noopener" title="abrir a app de ${esc(o.unidade)}">↗</a></div>
+      ${o.obs ? `<div class="oc-obs" title="${esc(o.obs)}">${esc(o.obs)}</div>` : ''}
+    </article>`).join('') : `<div class="vazio-ok">${daUnidade.length ? '✔ Nada por abrir neste filtro.' : '✔ Todas as ordens activas têm número de OP.'}</div>`;
   $('#opsMais').innerHTML = lista.length > MAX ? `+ ${lista.length - MAX} ordens${tv ? ' (modo TV mostra as mais próximas)' : ` — <a href="#" id="opsVerTudo">mostrar todas</a>`}` : (OPS_TUDO && lista.length > 60 ? '<a href="#" id="opsVerMenos">mostrar menos</a>' : '');
   const vt = $('#opsVerTudo'); if (vt) vt.addEventListener('click', e => { e.preventDefault(); OPS_TUDO = true; renderOps(); });
   const vm = $('#opsVerMenos'); if (vm) vm.addEventListener('click', e => { e.preventDefault(); OPS_TUDO = false; renderOps(); });
-  $$('#opsBody tr[data-id]').forEach(tr => tr.addEventListener('click', e => { if (e.target.closest('a')) return; abrirDetalhe(tr.dataset.id); }));
+  $$('#opsCards .ocard').forEach(c => c.addEventListener('click', e => { if (e.target.closest('a')) return; abrirDetalhe(c.dataset.id); }));
 }
 function exportarCsvOps() {
   const lista = opsVisiveis();
   const niv = { critico: 'plano passado/hoje', serio: 'próximos 7 dias', aviso: 'mais tarde' };
-  const cab = ['Unidade', 'Urgencia', 'Dias ate ao plano', 'Dia plano', 'Semana plano', 'Campo OP', 'Lote/Ref', 'Pedido', 'Cliente', 'Produto', 'Calibre', 'Qtd (un)', 'Maquina', 'Fase', 'Estado na app', 'Urgente', 'Obs'];
-  const linhas = lista.map(o => [o.unidade, niv[o.sem_op_nivel] || '', o.dias_plano ?? '', o.data_plano || '', o.semana_plano || '', o.op, o.ref, o.pedido, o.cliente, o.produto, o.calibre, o.qtd, o.maquina, o.fase, o.estado_origem, o.urgente ? 'sim' : '', o.obs]
+  const cab = ['Unidade', 'Urgencia', 'D-n', 'Dias ate ao plano', 'Dia plano', 'Semana plano', 'Campo OP', 'Lote/Ref', 'Pedido', 'Cliente', 'Produto', 'Calibre', 'Qtd (un)', 'Maquina', 'Fase', 'Estado na app', 'Data limite', 'Urgente', 'Obs'];
+  const linhas = lista.map(o => [o.unidade, niv[o.sem_op_nivel] || '', etiquetaDias(o), o.dias_plano ?? '', o.data_plano || '', o.semana_plano || '', o.op, o.ref, o.pedido, o.cliente, o.produto, o.calibre, o.qtd, o.maquina, o.fase, o.estado_origem, o.data_limite || '', o.urgente ? 'sim' : '', o.obs]
     .map(v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(';'));
   const blob = new Blob(['﻿' + [cab.join(';'), ...linhas].join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ops_por_abrir_${ECRA ? ECRA.replace(/\s+/g, '_') + '_' : ''}${DADOS.hoje}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ops_por_abrir_${ECRA ? ECRA.replace(/\s+/g, '_') + '_' : ''}${FDATA.modo}_${DADOS.hoje}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 // ------------------------------------------------------------
