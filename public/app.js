@@ -29,7 +29,6 @@ const ORDEM_UNID = ['PURECORK', 'DSL', 'DENSIDADES', 'WIM', 'VOCUS', 'DS100', 'D
 
 let DADOS = null;
 let ECRA = new URLSearchParams(location.search).get('unidade') || ''; // ?unidade=DSL -> só essa unidade
-let ALERTAS_TUDO = false;
 let OPS_TUDO = false;
 let temporizador = null;
 const unidade = u => DADOS.unidades.find(x => x.unidade === u);
@@ -129,7 +128,7 @@ function agendar() {
 function render() {
   if (!DADOS) return;
   document.body.classList.toggle('uma-unidade', !!ECRA);
-  renderMeta(); renderFontes(); renderSelects(); renderKpis(); renderOps(); renderAlertas();
+  renderMeta(); renderFontes(); renderSelects(); renderKpis(); renderOps();
   if (!$('#qResultados').hidden) renderPesquisa();
   agendar();
 }
@@ -157,11 +156,6 @@ function renderSelects() {
   }
 }
 
-function alertasVisiveis() {
-  const A = DADOS.alertas || { grupos: [] };
-  return A.grupos.map(g => ({ ...g, itens: g.itens.filter(a => !ECRA || a.unidade === ECRA) })).filter(g => g.itens.length);
-}
-
 function kpiTile(cls, rot, val, det, alvo, alerta) {
   return `<div class="kpi ${cls}" data-alvo="${alvo}" role="button" tabindex="0">
     <div class="rot">${rot}</div>
@@ -169,19 +163,25 @@ function kpiTile(cls, rot, val, det, alvo, alerta) {
     <div class="det">${det}</div></div>`;
 }
 function renderKpis() {
-  const uni = ECRA ? unidade(ECRA) : null;
-  const t = uni ? uni.kpi : DADOS.total;
-  const grupos = alertasVisiveis();
-  const nAl = grupos.reduce((s, g) => s + g.itens.length, 0);
-  const crit = grupos.reduce((s, g) => s + g.itens.filter(a => a.nivel === 'critico').length, 0);
-  const serio = grupos.reduce((s, g) => s + g.itens.filter(a => a.nivel === 'serio').length, 0);
+  const base = (DADOS.ops_por_abrir || []).filter(o => !ECRA || o.unidade === ECRA);
+  const vis = base.filter(o => !(ANTIGAS && antiga(o)));
+  const nAntigas = base.filter(antiga).length;
+  const hoje = vis.filter(o => o.dias_plano != null && o.dias_plano <= 0).length;
+  const hojeSo = vis.filter(o => o.dias_plano === 0).length;
+  const d12 = vis.filter(o => o.dias_plano === 1 || o.dias_plano === 2).length;
+  const d1 = vis.filter(o => o.dias_plano === 1).length;
   $('#kpis').innerHTML = [
-    kpiTile('k-op', 'OP por abrir', t.sem_op, `<b class="c">${t.sem_op_passado}</b> com plano já passado/hoje · <b class="s">${t.sem_op_7d}</b> nos próximos 7 dias · ${t.sem_op - t.sem_op_passado - t.sem_op_7d} depois`, 'opsSec', t.sem_op_passado > 0),
-    kpiTile('k-crit', 'Críticas', crit, 'app sem ligação · data limite do cliente ultrapassada', 'alertasSec', crit > 0),
-    kpiTile('k-serio', 'A tratar', serio + (nAl - crit - serio), `${serio} séria${serio === 1 ? '' : 's'} (fim planeado passou, terminada por fechar) · ${nAl - crit - serio} aviso${nAl - crit - serio === 1 ? '' : 's'}`, 'alertasSec', serio > 0),
-    kpiTile('k-prazo', '<span class="ico">⏰</span> Prazo cliente ultrapassado', t.atraso_prazo, 'ordens não terminadas com data limite no passado', 'alertasSec', t.atraso_prazo > 0),
+    kpiTile('k-op', 'OP por abrir', vis.length, `${ANTIGAS ? 'sem as antigas · ' : ''}${vis.filter(o => o.dias_plano != null && o.dias_plano <= 3).length} até D+3 · ${vis.filter(o => o.dias_plano == null || o.dias_plano > 3).length} depois ou sem data`, 'todas', false),
+    kpiTile('k-hoje', 'Hoje', hoje, ANTIGAS || hoje === hojeSo ? 'plano para hoje — a OP tem de ser aberta já' : `${hojeSo} para hoje + ${hoje - hojeSo} atrasadas`, 'd0', hoje > 0),
+    kpiTile('k-d12', 'D+1 e D+2', d12, `${d1} para amanhã · ${d12 - d1} para daqui a 2 dias`, 'd2', d12 > 0),
+    kpiTile('k-antigas', 'Antigas', nAntigas, ANTIGAS ? 'plano anterior a hoje — ignoradas (ver "ignorar antigas")' : 'plano anterior a hoje — lixo de planeamento ou já feitas sem OP', 'antigas', false),
   ].join('');
-  $$('#kpis .kpi').forEach(el => el.addEventListener('click', () => { const s = $('#' + el.dataset.alvo); if (s && !document.body.classList.contains('tv')) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
+  $$('#kpis .kpi').forEach(el => el.addEventListener('click', () => {
+    const m = el.dataset.alvo;
+    if (m === 'antigas') { if (ANTIGAS) definirAntigas(false); definirFiltroData('antigas'); }
+    else definirFiltroData(m);
+    if (!document.body.classList.contains('tv')) $('#opsSec').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
 }
 
 // ------------------------------------------------------------
@@ -190,7 +190,7 @@ function renderKpis() {
 // Filtro de datas (dia planeado): Hoje (dias = 0; inclui atrasadas se não ignoradas), até D+1, até D+2, até D+3, personalizado (de…até), todas
 // "Ignorar antigas" tira da lista e das contagens as ordens com plano antes de hoje.
 const PARAMS = new URLSearchParams(location.search);
-let FDATA = { modo: PARAMS.get('dias') != null ? (PARAMS.get('dias') === 'todas' ? 'todas' : 'd' + PARAMS.get('dias')) : (PARAMS.get('de') || PARAMS.get('ate') ? 'custom' : 'd3'), de: PARAMS.get('de') || '', ate: PARAMS.get('ate') || '' };
+let FDATA = { modo: PARAMS.get('dias') != null ? (['todas', 'antigas'].includes(PARAMS.get('dias')) ? PARAMS.get('dias') : 'd' + PARAMS.get('dias')) : (PARAMS.get('de') || PARAMS.get('ate') ? 'custom' : 'd3'), de: PARAMS.get('de') || '', ate: PARAMS.get('ate') || '' };
 let ANTIGAS = PARAMS.get('antigas') != null ? PARAMS.get('antigas') === 'ignorar' : (() => { try { return localStorage.getItem('dg_antigas') === 'ignorar'; } catch (e) { return false; } })();
 const refPlano = o => o.data_plano || (o.semana_plano ? segundaISO(o.semana_plano) : null);
 function segundaISO(wk) { const m = /(\d{4})-W(\d{1,2})/.exec(wk || ''); if (!m) return null; const j4 = new Date(Date.UTC(+m[1], 0, 4)); const dn = (j4.getUTCDay() + 6) % 7; j4.setUTCDate(j4.getUTCDate() - dn + (+m[2] - 1) * 7); return j4.toISOString().slice(0, 10); }
@@ -198,6 +198,7 @@ const antiga = o => o.dias_plano != null && o.dias_plano < 0;
 function passaData(o) {
   const m = FDATA.modo;
   if (m === 'todas') return true;
+  if (m === 'antigas') return antiga(o);
   if (m === 'custom') { const r = refPlano(o); if (!r) return false; return (!FDATA.de || r >= FDATA.de) && (!FDATA.ate || r <= FDATA.ate); }
   const n = +m.slice(1); return o.dias_plano != null && o.dias_plano <= n;
 }
@@ -206,13 +207,14 @@ function opsVisiveis() { return opsUnidade().filter(passaData); }
 function definirFiltroData(modo, de, ate) {
   FDATA = { modo, de: de || '', ate: ate || '' };
   const u = new URL(location.href); u.searchParams.delete('dias'); u.searchParams.delete('de'); u.searchParams.delete('ate');
-  if (modo === 'todas') u.searchParams.set('dias', 'todas'); else if (modo === 'custom') { if (FDATA.de) u.searchParams.set('de', FDATA.de); if (FDATA.ate) u.searchParams.set('ate', FDATA.ate); } else if (modo !== 'd3') u.searchParams.set('dias', modo.slice(1));
+  if (modo === 'todas') u.searchParams.set('dias', 'todas'); else if (modo === 'custom') { if (FDATA.de) u.searchParams.set('de', FDATA.de); if (FDATA.ate) u.searchParams.set('ate', FDATA.ate); } else if (modo === 'antigas') u.searchParams.set('dias', 'antigas'); else if (modo !== 'd3') u.searchParams.set('dias', modo.slice(1));
   history.replaceState(null, '', u); OPS_TUDO = false; renderOps();
+  $$('#kpis .kpi').forEach(el => el.classList.toggle('activo', el.dataset.alvo === FDATA.modo));
 }
 function definirAntigas(ignorar) {
   ANTIGAS = !!ignorar; try { localStorage.setItem('dg_antigas', ANTIGAS ? 'ignorar' : 'mostrar'); } catch (e) { /* sem storage */ }
   const u = new URL(location.href); if (ANTIGAS) u.searchParams.set('antigas', 'ignorar'); else u.searchParams.delete('antigas');
-  history.replaceState(null, '', u); OPS_TUDO = false; renderOps();
+  history.replaceState(null, '', u); OPS_TUDO = false; renderKpis(); renderOps();
 }
 // cor do cartão: hoje (e atrasadas) = vermelho · D+1 e D+2 = amarelo · D+3 em diante = azul · sem data = cinzento
 const classeDias = o => o.dias_plano == null ? 'semdata' : (o.dias_plano <= 0 ? 'hoje' : (o.dias_plano <= 2 ? 'd' + o.dias_plano : 'd3mais'));
@@ -245,10 +247,10 @@ function renderOps() {
   $('#fdDe').addEventListener('change', aoMudarData); $('#fdAte').addEventListener('change', aoMudarData);
   $('#fdAntigas').addEventListener('change', e => definirAntigas(e.target.checked));
   const nHoje = lista.filter(o => classeDias(o) === 'hoje').length, nAmarelas = lista.filter(o => o.dias_plano === 1 || o.dias_plano === 2).length, nAtr = lista.filter(antiga).length;
-  const descFiltro = FDATA.modo === 'todas' ? 'todas as datas' : (FDATA.modo === 'custom' ? `plano de ${dPT(FDATA.de) === '—' ? '…' : dPT(FDATA.de)} até ${dPT(FDATA.ate) === '—' ? '…' : dPT(FDATA.ate)}` : (FDATA.modo === 'd0' ? 'plano para hoje' : `plano até D+${FDATA.modo.slice(1)}`));
-  $('#opsResumo').textContent = lista.length ? `${lista.length} sem número de OP (${descFiltro}) · ${nHoje} para hoje${nAtr ? ` (${nAtr} atrasadas)` : ''} · ${nAmarelas} para D+1/D+2${ANTIGAS ? ' · antigas ignoradas' : ''}` : (daUnidade.length ? `nenhuma neste filtro (${descFiltro}); ${daUnidade.length} no total${ANTIGAS ? ', antigas ignoradas' : ''}` : 'todas as ordens activas têm número de OP');
+  const descFiltro = FDATA.modo === 'todas' ? 'todas as datas' : (FDATA.modo === 'custom' ? `plano de ${dPT(FDATA.de) === '—' ? '…' : dPT(FDATA.de)} até ${dPT(FDATA.ate) === '—' ? '…' : dPT(FDATA.ate)}` : (FDATA.modo === 'd0' ? 'plano para hoje' : (FDATA.modo === 'antigas' ? 'só antigas (plano antes de hoje)' : `plano até D+${FDATA.modo.slice(1)}`)));
+  $('#opsResumo').textContent = lista.length ? `${lista.length} sem número de OP (${descFiltro}) · ${nHoje - nAtr} para hoje · ${nAtr} atrasadas · ${nAmarelas} para D+1/D+2${ANTIGAS ? ' · antigas ignoradas' : ''}` : (daUnidade.length ? `nenhuma neste filtro (${descFiltro}); ${daUnidade.length} no total${ANTIGAS ? ', antigas ignoradas' : ''}` : 'todas as ordens activas têm número de OP');
   const tv = document.body.classList.contains('tv');
-  const MAX = tv ? 15 : (OPS_TUDO ? 5000 : 60);
+  const MAX = tv ? 25 : (OPS_TUDO ? 5000 : 60);
   $('#opsCards').innerHTML = lista.length ? lista.slice(0, MAX).map(o => `<article class="ocard ${classeDias(o)} ${o.sem_op_nivel}" data-id="${esc(o.id)}" title="Ver detalhe">
       <div class="oc-cab"><span class="oc-unid">${esc(o.unidade)}</span><span class="oc-dias">${esc(etiquetaDias(o))}</span></div>
       <div class="oc-op"><b>${esc(o.op || '(campo OP vazio)')}</b>${o.urgente ? ' <span class="tag urg">urg</span>' : ''}</div>
@@ -273,28 +275,6 @@ function exportarCsvOps() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ops_por_abrir_${ECRA ? ECRA.replace(/\s+/g, '_') + '_' : ''}${FDATA.modo}_${DADOS.hoje}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
-// ------------------------------------------------------------
-// Excepções
-// ------------------------------------------------------------
-function renderAlertas() {
-  const A = DADOS.alertas || { grupos: [], total: 0, criticos: 0, limiares: {} };
-  const grupos = alertasVisiveis();
-  const total = grupos.reduce((s, g) => s + g.itens.length, 0);
-  const crit = grupos.reduce((s, g) => s + g.itens.filter(a => a.nivel === 'critico').length, 0);
-  const L = A.limiares || {};
-  $('#alertasResumo').textContent = total ? `${total} situações · ${crit} críticas · limiares: em processo > ${L.processo_h} h (${L.processo_h_fila} h em fila), fim registado > ${L.fim_registado_h} h, plano > ${L.plano_dias} d, JOB > ${L.job_dias} d` : 'sem situações a tratar';
-  $('#btnAlertas').style.display = total ? '' : 'none';
-  $('#btnAlertas').textContent = ALERTAS_TUDO ? 'mostrar menos' : 'mostrar tudo';
-  const MAX = ALERTAS_TUDO ? 1000 : 5;
-  $('#alertas').innerHTML = grupos.length ? grupos.map(g => `<div class="exc ${g.nivel}">
-      <div class="acab"><b>${esc(g.titulo)}</b><span class="n">${g.itens.length}</span></div>
-      <div class="adescr">${esc(g.descr)}</div>
-      <ul>${g.itens.slice(0, MAX).map(a => `<li data-id="${esc(a.id)}" title="Ver detalhe"><span class="au">${esc(a.unidade)}${a.maquina ? ' · ' + esc(a.maquina) : ''}</span><span class="aop">${esc(a.op || '—')}${a.cliente ? ' <span class="origem">' + esc(a.cliente) + '</span>' : ''}</span><span class="adet">${esc(a.detalhe)}</span></li>`).join('')}</ul>
-      ${g.itens.length > MAX ? `<div class="amais">+ ${g.itens.length - MAX} mais</div>` : ''}
-    </div>`).join('') : '<div class="vazio">✔ Nada em excepção — todas as apps ligadas, nada em processo além do limiar, sem prazos ultrapassados.</div>';
-  $$('#alertas li').forEach(el => el.addEventListener('click', () => { if (el.dataset.id && !el.dataset.id.startsWith('fonte-')) abrirDetalhe(el.dataset.id); }));
-}
-
 function definirEcra(u) {
   ECRA = u || ''; const url = new URL(location.href);
   if (ECRA) url.searchParams.set('unidade', ECRA); else url.searchParams.delete('unidade');
@@ -315,7 +295,6 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharDetalh
 $('#detalhe').addEventListener('click', e => { if (e.target === e.currentTarget) fecharDetalhe(); });
 $('#detFechar').addEventListener('click', fecharDetalhe);
 $('#btnCsvOps').addEventListener('click', exportarCsvOps);
-$('#btnAlertas').addEventListener('click', () => { ALERTAS_TUDO = !ALERTAS_TUDO; renderAlertas(); });
 $('#selUnidade').addEventListener('change', e => definirEcra(e.target.value));
 $('#btnAtualizar').addEventListener('click', () => carregar(true));
 $('#btnTv').addEventListener('click', () => { document.body.classList.toggle('tv'); const u = new URL(location.href); if (document.body.classList.contains('tv')) u.searchParams.set('tv', '1'); else u.searchParams.delete('tv'); history.replaceState(null, '', u); if (DADOS) renderOps(); });

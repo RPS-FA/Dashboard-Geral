@@ -3,8 +3,9 @@
 Dashboard de leitura que agrega as 6 apps de planeamento do CSP1 (7 unidades) e mostra **só o que precisa de acção da equipa de planeamento**:
 
 1. **OP por abrir** — ordens activas cujo campo OP ainda não tem o número de OP (8 dígitos), em cartões ordenados pelo dia planeado, com filtros rápidos Hoje / até D+1 / até D+2 / até D+3 / personalizado / todas e opção de ignorar antigas (hoje pisca a vermelho, D+1 e D+2 a amarelo).
-2. **Atenção** — excepções: app sem ligação, em processo além do fim planeado, terminada mas não fechada, em processo há demasiado tempo, data limite do cliente ultrapassada, pronta sem máquina, plano antigo, Espera JOB antigo.
-3. **Pesquisa global** — qualquer item em todos os planeamentos (activos e fechados), com detalhe da ordem.
+2. **Pesquisa global** — qualquer item em todos os planeamentos (activos e fechados), com detalhe da ordem.
+
+O painel de excepções "Atenção" (v3–v7) foi retirado do ecrã a pedido (28/10); a API `/api/resumo` continua a devolver `alertas` (regras em `src/indicadores.js alertas()`), sem UI.
 
 Só faz `GET` às apps de origem. Não tem base de dados e não altera nada. (As versões v1–v3 tinham painel de máquinas, cartões por unidade e tabela completa — removidos na v5 a pedido; a API `/api/resumo` continua a devolver `unidades[].maquinas` e `ordens`, por isso recuperam-se só com código de cliente.)
 
@@ -20,7 +21,7 @@ Só faz `GET` às apps de origem. Não tem base de dados e não altera nada. (As
 | Nível (KPI) | **crítico** = plano já passou ou é hoje · **sério** = próximos 7 dias · **aviso** = depois |
 | Filtro de datas | **Hoje** = dias até ao plano ≤ 0 (hoje; inclui atrasadas salvo se ignoradas) · **até D+1** ≤ 1 · **até D+2** ≤ 2 · **até D+3** ≤ 3 (defeito) · **Personalizado** = intervalo de dias planeados · **Todas**. **Ignorar antigas** esconde as ordens com plano anterior a hoje (lista, contagens e CSV; guardado no browser). URL: `?dias=0|1|2|3|todas`, `?de=AAAA-MM-DD&ate=AAAA-MM-DD`, `?antigas=ignorar` |
 | Cartões | um por ordem, ordenados pelo dia planeado; **hoje e atrasadas piscam a vermelho**, **D+1 e D+2 piscam a amarelo**, ≥ D+3 azul, sem data cinzento (`prefers-reduced-motion` desliga o piscar). Clique abre o detalhe |
-| Onde | KPI "OP por abrir" (total · já passado/hoje · próximos 7 d), chips por unidade, cartões (60 + "mostrar todas"), CSV com o filtro activo, modo TV (15 mais próximas) |
+| Onde | KPIs (OP por abrir · Hoje · D+1 e D+2 · Antigas — clicar aplica o filtro), chips por unidade, cartões (60 + "mostrar todas"), CSV com o filtro activo, modo TV (25 mais próximas, cabe em 1080p) |
 
 PureCork: o campo `op` da app fica vazio quando não há OP (o lote fica em `ref`); até à v4 o dashboard preenchia `op` com o lote, o que escondia OPs em falta.
 
@@ -47,9 +48,9 @@ Confirmado nos dados de produção (26/10/2026):
 
 **PureCork não regista execução.** Só existem `LOTE FINAL` (→ fechada) e `CONTADO`; o resto é "planeado". Não há "em processo" nesta unidade (está assinalado no ecrã).
 
-## Painel de excepções ("Atenção")
+## Excepções (só API, sem ecrã desde 28/10)
 
-Lista o que precisa de acção, agrupado por tipo e ordenado por gravidade. Clicar num item abre o detalhe da ordem (todos os campos + ligação à app de origem).
+`/api/resumo.alertas` agrupa por tipo e ordena por gravidade:
 
 | Tipo | Regra | Limiar (variável de ambiente) |
 |---|---|---|
