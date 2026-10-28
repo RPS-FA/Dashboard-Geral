@@ -220,7 +220,7 @@ const classeDias = o => o.dias_plano == null ? 'semdata' : (o.dias_plano < 0 ? '
 function etiquetaDias(o) {
   const d = o.dias_plano;
   if (d == null) return 'sem data';
-  if (d < 0) return `ATRASADA · plano há ${-d} d`;
+  if (d < 0) return `ATRASADA · ${-d} d`;
   if (d === 0) return 'HOJE';
   return `D+${d} · ${d === 1 ? 'amanhã' : 'em ' + d + ' d'}`;
 }
@@ -249,17 +249,32 @@ function renderOps() {
   const descFiltro = FDATA.modo === 'todas' ? 'todas as datas' : (FDATA.modo === 'custom' ? `plano de ${dPT(FDATA.de) === '—' ? '…' : dPT(FDATA.de)} até ${dPT(FDATA.ate) === '—' ? '…' : dPT(FDATA.ate)}` : (FDATA.modo === 'd0' ? 'plano para hoje' : (FDATA.modo === 'antigas' ? 'só antigas (plano antes de hoje)' : `plano até D+${FDATA.modo.slice(1)}`)));
   $('#opsResumo').textContent = lista.length ? `${lista.length} sem número de OP (${descFiltro}) · ${nHoje} para hoje · ${nAmarelas} para D+1/D+2${nAtr ? ` · ${nAtr} atrasadas` : ''}${ANTIGAS ? ' · antigas ignoradas' : ''}` : (daUnidade.length ? `nenhuma neste filtro (${descFiltro}); ${daUnidade.length} no total${ANTIGAS ? ', antigas ignoradas' : ''}` : 'todas as ordens activas têm número de OP');
   const tv = document.body.classList.contains('tv');
-  const MAX = tv ? 25 : (OPS_TUDO ? 5000 : 60);
-  $('#opsCards').innerHTML = lista.length ? lista.slice(0, MAX).map(o => `<article class="ocard ${classeDias(o)} ${o.sem_op_nivel}" data-id="${esc(o.id)}" title="Ver detalhe">
-      <div class="oc-cab"><span class="oc-unid">${esc(o.unidade)}</span><span class="oc-dias">${esc(etiquetaDias(o))}</span></div>
+  const MAX = tv ? 6 : (OPS_TUDO ? 5000 : 20); // por coluna (unidade)
+  const cartao = o => `<article class="ocard ${classeDias(o)} ${o.sem_op_nivel}" data-id="${esc(o.id)}" title="Ver detalhe">
+      <div class="oc-cab"><span class="oc-dias">${esc(etiquetaDias(o))}</span><span class="oc-maq" title="${esc([o.maquina, o.fase].filter(Boolean).join(' · '))}">${esc(o.maquina || '')}</span></div>
       <div class="oc-op"><b>${esc(o.op || '(campo OP vazio)')}</b>${o.urgente ? ' <span class="tag urg">urg</span>' : ''}</div>
-      <div class="oc-plano">plano <b>${esc(planoTxt(o))}</b>${o.plano_granularidade !== 'dia' ? ' <span class="origem">(semana → 2.ª feira)</span>' : (o.plano_fila ? ' <span class="origem">(início programado)</span>' : '')}${o.data_limite ? ` · limite ${dPT(o.data_limite)}` : ''}</div>
+      <div class="oc-plano">plano <b>${esc(planoTxt(o))}</b>${o.plano_granularidade !== 'dia' ? ' <span class="origem">(semana → 2.ª feira)</span>' : ''}${o.data_limite ? ` · limite ${dPT(o.data_limite)}` : ''}</div>
       <div class="oc-det" title="${esc([o.cliente, o.produto, o.calibre].filter(Boolean).join(' · '))}">${esc(o.cliente || '—')} · ${esc(o.produto || '—')}${o.calibre ? ' · ' + esc(o.calibre) : ''}</div>
-      <div class="oc-lin"><span>${o.pedido ? 'pedido ' + esc(o.pedido) : ''}${o.ref && o.ref !== o.op ? (o.pedido ? ' · ' : '') + esc(o.ref) : ''}</span><span>${o.qtd ? nR(o.qtd) + ' un.' : ''}</span></div>
-      <div class="oc-rod"><span class="est ${o.estado}" title="${esc(DADOS.estados[o.estado] || '')}"><i></i>${esc(o.estado_origem || DADOS.estados[o.estado])}</span><span class="oc-maq" title="${esc([o.maquina, o.fase].filter(Boolean).join(' · '))}">${esc(o.maquina || '')}</span><a class="oc-lnk" href="${esc((unidade(o.unidade) || {}).url || '#')}" target="_blank" rel="noopener" title="abrir a app de ${esc(o.unidade)}">↗</a></div>
+      <div class="oc-lin"><span title="${esc([o.pedido ? 'pedido ' + o.pedido : '', o.ref && o.ref !== o.op ? o.ref : ''].filter(Boolean).join(' · '))}">${o.pedido ? esc(o.pedido) : ''}${o.ref && o.ref !== o.op ? (o.pedido ? ' · ' : '') + esc(o.ref) : ''}</span><span>${o.qtd ? nR(o.qtd) + ' un.' : ''}</span></div>
+      <div class="oc-rod"><span class="est ${o.estado}" title="${esc(DADOS.estados[o.estado] || '')}"><i></i>${esc(o.estado_origem || DADOS.estados[o.estado])}</span><a class="oc-lnk" href="${esc((unidade(o.unidade) || {}).url || '#')}" target="_blank" rel="noopener" title="abrir a app de ${esc(o.unidade)}">↗</a></div>
       ${o.obs ? `<div class="oc-obs" title="${esc(o.obs)}">${esc(o.obs)}</div>` : ''}
-    </article>`).join('') : `<div class="vazio-ok">${daUnidade.length ? '✔ Nada por abrir neste filtro.' : '✔ Todas as ordens activas têm número de OP.'}</div>`;
-  $('#opsMais').innerHTML = lista.length > MAX ? `+ ${lista.length - MAX} ordens${tv ? ' (modo TV mostra as mais próximas)' : ` — <a href="#" id="opsVerTudo">mostrar todas</a>`}` : (OPS_TUDO && lista.length > 60 ? '<a href="#" id="opsVerMenos">mostrar menos</a>' : '');
+    </article>`;
+  // uma coluna por unidade (área), pela ordem das fontes; com uma unidade seleccionada mostra só essa, em grelha
+  const unidadesCol = DADOS.unidades.filter(u => !ECRA || u.unidade === ECRA);
+  let escondidas = 0;
+  $('#opsCards').className = 'ocols' + (ECRA ? ' uma' : '');
+  $('#opsCards').innerHTML = unidadesCol.map(u => {
+    const l = lista.filter(o => o.unidade === u.unidade);
+    const nH = l.filter(o => o.dias_plano === 0).length, nA = l.filter(o => o.dias_plano === 1 || o.dias_plano === 2).length;
+    const mostrar = l.slice(0, MAX); escondidas += l.length - mostrar.length;
+    const f = u.fonte;
+    return `<div class="ocol${l.length ? '' : ' vazia'}${f.ok ? '' : ' falha'}" data-unidade="${esc(u.unidade)}">
+      <div class="ocol-cab" title="${esc(u.nome)}${f.ok ? '' : ' — SEM LIGAÇÃO: ' + (f.erro || '')}"><b>${esc(u.unidade)}</b><span class="ocol-n">${l.length}</span>${nH ? `<span class="ocol-h" title="para hoje">${nH}</span>` : ''}${nA ? `<span class="ocol-a" title="D+1 e D+2">${nA}</span>` : ''}${f.ok ? '' : '<span class="ocol-x" title="app sem ligação">✕</span>'}</div>
+      <div class="ocol-cards">${mostrar.map(cartao).join('') || `<div class="ocol-vazia">${f.ok ? 'nada por abrir' : 'sem ligação à app'}</div>`}</div>
+      ${l.length > MAX ? `<div class="ocol-mais">+ ${l.length - MAX}</div>` : ''}
+    </div>`;
+  }).join('');
+  $('#opsMais').innerHTML = escondidas > 0 ? `+ ${escondidas} ordens além das ${MAX} por coluna${tv ? ' (modo TV mostra as mais próximas)' : ` — <a href="#" id="opsVerTudo">mostrar todas</a>`}` : (OPS_TUDO ? '<a href="#" id="opsVerMenos">mostrar menos</a>' : '');
   const vt = $('#opsVerTudo'); if (vt) vt.addEventListener('click', e => { e.preventDefault(); OPS_TUDO = true; renderOps(); });
   const vm = $('#opsVerMenos'); if (vm) vm.addEventListener('click', e => { e.preventDefault(); OPS_TUDO = false; renderOps(); });
   $$('#opsCards .ocard').forEach(c => c.addEventListener('click', e => { if (e.target.closest('a')) return; abrirDetalhe(c.dataset.id); }));
