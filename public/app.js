@@ -297,6 +297,7 @@ $('#detFechar').addEventListener('click', fecharDetalhe);
 $('#btnCsvOps').addEventListener('click', exportarCsvOps);
 $('#selUnidade').addEventListener('change', e => definirEcra(e.target.value));
 $('#btnAtualizar').addEventListener('click', () => carregar(true));
+$('#btnTema').addEventListener('click', () => { const claro = document.documentElement.dataset.theme === 'light'; if (claro) delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = 'light'; try { localStorage.setItem('dg_tema', claro ? 'escuro' : 'claro'); } catch (e) { /* sem storage */ } });
 $('#btnTv').addEventListener('click', () => { document.body.classList.toggle('tv'); const u = new URL(location.href); if (document.body.classList.contains('tv')) u.searchParams.set('tv', '1'); else u.searchParams.delete('tv'); history.replaceState(null, '', u); if (DADOS) renderOps(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && DADOS) carregar(false); });
 

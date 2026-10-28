@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<script>try{var t=new URLSearchParams(location.search).get("tema")||localStorage.getItem("dg_tema");if(t==="claro"||t==="light")document.documentElement.dataset.theme="light";}catch(e){}</script>
 <title>Dashboard Geral · Urgências CSP1</title>
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
 <header class="topo">
@@ -20,6 +22,7 @@
   <div class="topo-dir">
     <label class="sel-unidade" title="Ver só uma unidade (também para o ecrã TV da secção)">Unidade <select id="selUnidade"><option value="">Todas</option></select></label>
     <button id="btnAtualizar" class="btn" title="Forçar leitura das apps">↻ Actualizar</button>
+    <button id="btnTema" class="btn" title="Alternar fundo preto / claro (fica guardado neste browser)">◐ Tema</button>
     <button id="btnTv" class="btn" title="Modo ecrã (só indicadores)">▣ Modo TV</button>
   </div>
 </header>
@@ -42,6 +45,6 @@
 
 <div id="detalhe" class="detalhe" hidden><div class="det-caixa" role="dialog" aria-modal="true"><button class="det-fechar" id="detFechar" type="button" aria-label="Fechar">✕</button><div id="detCorpo"></div></div></div>
 <div id="toast" class="toast" hidden></div>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

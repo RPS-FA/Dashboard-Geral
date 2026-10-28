@@ -90,6 +90,10 @@ Alcance = o que cada app guarda: WIM, VOCUS, DS100, PureCork, Densidades e DSL d
 
 Quantidades em **unidades** (DSL e PureCork guardam milheiros → ×1000). Fuso horário: Europe/Lisbon (o servidor Railway corre em UTC).
 
+## Tema
+
+Fundo preto por defeito (TV / sala de planeamento). Botão "Tema" no cabeçalho alterna para claro e guarda a escolha no browser (`localStorage dg_tema`); `?tema=claro` força o claro numa URL.
+
 ## Correr
 
 ```bash
