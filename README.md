@@ -2,7 +2,7 @@
 
 Dashboard de leitura que agrega as 6 apps de planeamento do CSP1 (7 unidades) e mostra **só o que precisa de acção da equipa de planeamento**:
 
-1. **OP por abrir** — ordens activas cujo campo OP ainda não tem o número de OP (8 dígitos), em cartões ordenados pelo dia planeado, com filtros rápidos D-1 / D-2 / D-3 / personalizado / todas (D-1 pisca a vermelho, D-2 a amarelo).
+1. **OP por abrir** — ordens activas cujo campo OP ainda não tem o número de OP (8 dígitos), em cartões ordenados pelo dia planeado, com filtros rápidos Hoje / até D+1 / até D+2 / até D+3 / personalizado / todas e opção de ignorar antigas (hoje pisca a vermelho, D+1 e D+2 a amarelo).
 2. **Atenção** — excepções: app sem ligação, em processo além do fim planeado, terminada mas não fechada, em processo há demasiado tempo, data limite do cliente ultrapassada, pronta sem máquina, plano antigo, Espera JOB antigo.
 3. **Pesquisa global** — qualquer item em todos os planeamentos (activos e fechados), com detalhe da ordem.
 
@@ -18,8 +18,8 @@ Só faz `GET` às apps de origem. Não tem base de dados e não altera nada. (As
 | Não conta | `AG OP - 150XXX`, `1800XXXX`, `144xxxx -1`, `AG OP (1) - 1500XXXX - PAV 1200`, lote `LT02328411`, pedido `4400042021-20`, vazio |
 | Dias até ao plano | dia planeado − hoje; DS100 (semana) e VOCUS (fila com `weekKey`) usam a **segunda-feira** dessa semana; sem data → fim da lista |
 | Nível (KPI) | **crítico** = plano já passou ou é hoje · **sério** = próximos 7 dias · **aviso** = depois |
-| Filtro de datas | **D-1** = dias até ao plano ≤ 1 (amanhã, hoje ou já passado — a OP tem de ser aberta hoje) · **D-2** ≤ 2 · **D-3** ≤ 3 (defeito) · **Personalizado** = intervalo de dias planeados · **Todas**. URL: `?dias=1|2|3|todas`, `?de=AAAA-MM-DD&ate=AAAA-MM-DD` |
-| Cartões | um por ordem, ordenados pelo dia planeado; **D-1 pisca a vermelho**, **D-2 pisca a amarelo**, ≥ D-3 azul, sem data cinzento (`prefers-reduced-motion` desliga o piscar). Clique abre o detalhe |
+| Filtro de datas | **Hoje** = dias até ao plano ≤ 0 (hoje; inclui atrasadas salvo se ignoradas) · **até D+1** ≤ 1 · **até D+2** ≤ 2 · **até D+3** ≤ 3 (defeito) · **Personalizado** = intervalo de dias planeados · **Todas**. **Ignorar antigas** esconde as ordens com plano anterior a hoje (lista, contagens e CSV; guardado no browser). URL: `?dias=0|1|2|3|todas`, `?de=AAAA-MM-DD&ate=AAAA-MM-DD`, `?antigas=ignorar` |
+| Cartões | um por ordem, ordenados pelo dia planeado; **hoje e atrasadas piscam a vermelho**, **D+1 e D+2 piscam a amarelo**, ≥ D+3 azul, sem data cinzento (`prefers-reduced-motion` desliga o piscar). Clique abre o detalhe |
 | Onde | KPI "OP por abrir" (total · já passado/hoje · próximos 7 d), chips por unidade, cartões (60 + "mostrar todas"), CSV com o filtro activo, modo TV (15 mais próximas) |
 
 PureCork: o campo `op` da app fica vazio quando não há OP (o lote fica em `ref`); até à v4 o dashboard preenchia `op` com o lote, o que escondia OPs em falta.

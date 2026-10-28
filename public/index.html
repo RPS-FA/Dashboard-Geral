@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard Geral · Urgências CSP1</title>
-<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 <header class="topo">
@@ -40,7 +40,7 @@
   </section>
 
   <footer class="rodape">
-    <p><strong>Regras.</strong> <em>OP por abrir</em> = ordem activa (não terminada, não manutenção) cujo campo OP não tem um número de OP de 8 dígitos (1xxxxxxx, isolado — "AG OP - 150XXX", "1800XXXX", lotes "LT…" e pedidos "4400…" não contam). Filtro por dia planeado: <em>D-1</em> = plano amanhã, hoje ou já passado (a OP tem de ser aberta hoje) — cartão a piscar a vermelho; <em>D-2</em> = plano depois de amanhã — a piscar a amarelo; <em>D-3</em> = até 3 dias (defeito); <em>Personalizado</em> = intervalo de datas; <em>Todas</em> = sem horizonte. Ordenação pelo dia planeado. DS100 e VOCUS planeiam à semana — conta a segunda-feira dessa semana.
+    <p><strong>Regras.</strong> <em>OP por abrir</em> = ordem activa (não terminada, não manutenção) cujo campo OP não tem um número de OP de 8 dígitos (1xxxxxxx, isolado — "AG OP - 150XXX", "1800XXXX", lotes "LT…" e pedidos "4400…" não contam). Filtro por dia planeado: <em>Hoje</em> = plano para hoje (e atrasadas, se não ignoradas) — cartão a piscar a vermelho; <em>até D+1</em> / <em>até D+2</em> = plano até amanhã / daqui a 2 dias — D+1 e D+2 a piscar a amarelo; <em>até D+3</em> (defeito); <em>Personalizado</em> = intervalo de datas; <em>Todas</em> = sem horizonte. <em>Ignorar antigas</em> esconde as ordens com plano anterior a hoje. Ordenação pelo dia planeado. DS100 e VOCUS planeiam à semana — conta a segunda-feira dessa semana.
     <em>Atenção</em> = situações que precisam de acção na app de origem: app sem ligação, em processo além do fim planeado, terminada mas não fechada, em processo há demasiado tempo, data limite do cliente ultrapassada, pronta sem máquina, plano antigo por fechar, Espera JOB antigo.
     Ciclo das ordens: Em espera (Kanban/Buffer) → Aberto → Liberada → Na linha ("Entregue Logística") → Em processo → Terminada → Espera JOB → Fechada. PureCork não regista execução (só LOTE FINAL e CONTADO). DSL Talis só devolve o mês actual e o anterior. Fuso: Europe/Lisbon. O dashboard só lê as apps — não altera nada.</p>
   </footer>
@@ -48,6 +48,6 @@
 
 <div id="detalhe" class="detalhe" hidden><div class="det-caixa" role="dialog" aria-modal="true"><button class="det-fechar" id="detFechar" type="button" aria-label="Fechar">✕</button><div id="detCorpo"></div></div></div>
 <div id="toast" class="toast" hidden></div>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
