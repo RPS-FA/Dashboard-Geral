@@ -2,7 +2,7 @@
 
 Dashboard de leitura que agrega as 6 apps de planeamento do CSP1 (7 unidades) e mostra **só o que precisa de acção da equipa de planeamento**:
 
-1. **OP por abrir** — ordens activas cujo campo OP ainda não tem o número de OP (8 dígitos), em cartões ordenados pelo dia planeado, com filtros rápidos Hoje / até D+1 / até D+2 / até D+3 / personalizado / todas e opção de ignorar antigas (hoje pisca a vermelho, D+1 e D+2 a amarelo).
+1. **OP por abrir** — ordens activas cujo campo OP ainda não tem o número de OP (8 dígitos), em cartões ordenados pelo dia planeado, com filtros rápidos Hoje / até D+1 / até D+2 / até D+3 / personalizado / todas e opção de ignorar antigas (hoje vermelho, D+1 e D+2 amarelo).
 2. **Pesquisa global** — qualquer item em todos os planeamentos (activos e fechados), com detalhe da ordem.
 
 O painel de excepções "Atenção" (v3–v7) foi retirado do ecrã a pedido (28/10); a API `/api/resumo` continua a devolver `alertas` (regras em `src/indicadores.js alertas()`), sem UI.
@@ -20,7 +20,7 @@ Só faz `GET` às apps de origem. Não tem base de dados e não altera nada. (As
 | Dias até ao plano | dia planeado − hoje; VOCUS usa o dia de início programado pelo PlannerCork; DS100 (semana) usa a **segunda-feira** dessa semana; sem data → fim da lista |
 | Nível (KPI) | **crítico** = plano já passou ou é hoje · **sério** = próximos 7 dias · **aviso** = depois |
 | Filtro de datas | D = hoje. **Hoje** = dias até ao plano = 0 · **até D+1** = 0..1 · **até D+2** = 0..2 · **até D+3** = 0..3 (defeito) · **Personalizado** = intervalo de dias planeados · **Todas**. **As ordens com plano anterior a hoje nunca entram nos filtros D** — só em Todas/Personalizado ou pelo indicador "Antigas" (`?dias=antigas`). **Ignorar antigas** tira-as também de Todas e das contagens (guardado no browser). URL: `?dias=0|1|2|3|todas|antigas`, `?de=AAAA-MM-DD&ate=AAAA-MM-DD`, `?antigas=ignorar` |
-| Cartões | **uma coluna por unidade** (7 colunas, pela ordem das fontes; com uma unidade seleccionada, grelha dessa unidade); dentro da coluna, ordenados pelo dia planeado; 20 por coluna + "mostrar todas" (TV: 6 por coluna, cabe em 1080p); cabeçalho da coluna com total, nº para hoje (vermelho) e D+1/D+2 (amarelo); **hoje pisca a vermelho**, **D+1 e D+2 piscam a amarelo**, ≥ D+3 azul, atrasadas vermelho fixo esbatido (só em Todas/Antigas), sem data cinzento (`prefers-reduced-motion` desliga o piscar). Clique abre o detalhe |
+| Cartões | **uma coluna por unidade** (7 colunas, pela ordem das fontes; com uma unidade seleccionada, grelha dessa unidade); dentro da coluna, ordenados pelo dia planeado; 20 por coluna + "mostrar todas" (TV: 6 por coluna, cabe em 1080p); cabeçalho da coluna com total, nº para hoje (vermelho) e D+1/D+2 (amarelo); **hoje vermelho**, **D+1 e D+2 amarelo** (cor fixa, sem piscar — retirado a pedido a 28/10), ≥ D+3 azul, atrasadas vermelho esbatido (só em Todas/Antigas), sem data cinzento. Clique abre o detalhe |
 | Onde | KPIs (OP por abrir · Hoje · D+1 e D+2 · Antigas — clicar aplica o filtro), chips por unidade, cartões (60 + "mostrar todas"), CSV com o filtro activo, modo TV (25 mais próximas, cabe em 1080p) |
 
 PureCork: o campo `op` da app fica vazio quando não há OP (o lote fica em `ref`); até à v4 o dashboard preenchia `op` com o lote, o que escondia OPs em falta.
