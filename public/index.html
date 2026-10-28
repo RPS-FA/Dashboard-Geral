@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark light">
 <script>try{var t=new URLSearchParams(location.search).get("tema")||localStorage.getItem("dg_tema");if(t==="claro"||t==="light")document.documentElement.dataset.theme="light";}catch(e){}</script>
 <title>Dashboard Geral · Urgências CSP1</title>
-<link rel="stylesheet" href="styles.css?v=10">
+<link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
 <header class="topo">
@@ -38,13 +38,13 @@
   </section>
 
   <footer class="rodape">
-    <p><strong>Regras.</strong> <em>OP por abrir</em> = ordem activa (não terminada, não manutenção) cujo campo OP não tem um número de OP de 8 dígitos (1xxxxxxx, isolado — "AG OP - 150XXX", "1800XXXX", lotes "LT…" e pedidos "4400…" não contam). Filtro por dia planeado (D = hoje): <em>Hoje</em> = só plano para hoje — cartão a piscar a vermelho; <em>até D+1</em> / <em>até D+2</em> = de hoje até amanhã / daqui a 2 dias — D+1 e D+2 a piscar a amarelo; <em>até D+3</em> (defeito). As ordens com plano anterior a hoje nunca entram nos filtros D: só em <em>Todas</em>, <em>Personalizado</em> ou no indicador <em>Antigas</em>. <em>Ignorar antigas</em> tira-as também de Todas e das contagens. Ordenação pelo dia planeado. DS100 e VOCUS planeiam à semana — conta a segunda-feira dessa semana.
+    <p><strong>Regras.</strong> <em>OP por abrir</em> = ordem activa (não terminada, não manutenção) cujo campo OP não tem um número de OP de 8 dígitos (1xxxxxxx, isolado — "AG OP - 150XXX", "1800XXXX", lotes "LT…" e pedidos "4400…" não contam). Filtro por dia planeado (D = hoje): <em>Hoje</em> = só plano para hoje — cartão a piscar a vermelho; <em>até D+1</em> / <em>até D+2</em> = de hoje até amanhã / daqui a 2 dias — D+1 e D+2 a piscar a amarelo; <em>até D+3</em> (defeito). As ordens com plano anterior a hoje nunca entram nos filtros D: só em <em>Todas</em>, <em>Personalizado</em> ou no indicador <em>Antigas</em>. <em>Ignorar antigas</em> tira-as também de Todas e das contagens. Ordenação pelo dia planeado. VOCUS: dia e hora de início programados pelo PlannerCork (fila por máquina, cadência × OEE, paragens, setup). DS100 planeia à semana — conta a segunda-feira dessa semana.
     Ciclo das ordens: Em espera (Kanban/Buffer) → Aberto → Liberada → Na linha ("Entregue Logística") → Em processo → Terminada → Espera JOB → Fechada. PureCork não regista execução (só LOTE FINAL e CONTADO). DSL Talis só devolve o mês actual e o anterior. Fuso: Europe/Lisbon. O dashboard só lê as apps — não altera nada.</p>
   </footer>
 </main>
 
 <div id="detalhe" class="detalhe" hidden><div class="det-caixa" role="dialog" aria-modal="true"><button class="det-fechar" id="detFechar" type="button" aria-label="Fechar">✕</button><div id="detCorpo"></div></div></div>
 <div id="toast" class="toast" hidden></div>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>

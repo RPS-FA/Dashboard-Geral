@@ -131,3 +131,29 @@ console.log('OK — todos os testes passaram');
   assert.strictEqual(A.total, 8);
   console.log('OK — alertas');
 }
+
+// --- plano VOCUS (porte do PlannerCork) ---
+process.env.TZ = 'Europe/Lisbon';
+{
+  const P = require('../src/adaptadores/vocus_plano');
+  const S = { startTime: '06:00', rate: 1000, setupMinutes: 30, oee: { v1: 0.5 }, stops: { 'Vocus 1': [{ date: '2026-10-27', days: 1, label: 'Paragem' }] }, shiftPeriods: [] };
+  const ops = [
+    { id: 1, maquina: 'Vocus 1', weekKey: '2026-W44', sortIdx: 0, qc: 5000 },            // 5000/(1000×0.5) = 10 h → seg 06:00–16:00
+    { id: 2, maquina: 'Vocus 1', weekKey: '2026-W44', sortIdx: 1, qc: 4000, reprocessoC5: 500, tempoParagem: 60 }, // (4500/500 + 1) = 10 h → 16:30; 7h30 até à meia-noite, salta a paragem de terça (00:00–24:00), termina 4.ª 02:30
+    { id: 3, maquina: 'Vocus 1', weekKey: '2026-W44', sortIdx: 2, qc: 1000, startMode: 'manual', startManual: '2026-10-30T08:00' }, // forçado
+    { id: 4, maquina: 'Vocus 1', weekKey: '2026-W45', sortIdx: 0, qc: 500 },             // semana seguinte continua a cadeia (não volta à segunda 06:00)
+    { id: 9, maquina: 'KANBAN', weekKey: null, qc: 100 },
+  ];
+  const pl = P.calcularPlano(ops, S);
+  const f = d => `${P.dataLocal(d)} ${P.horaLocal(d)}`;
+  assert.strictEqual(f(pl.get(1).start), '2026-10-26 06:00', 'arranque segunda 06:00');
+  assert.strictEqual(f(pl.get(1).end), '2026-10-26 16:00', '10 h de duração');
+  assert.strictEqual(f(pl.get(2).start), '2026-10-26 16:30', 'setup 30 min');
+  assert.strictEqual(f(pl.get(2).end), '2026-10-28 02:30', '7h30 até meia-noite + salta terça inteira + 2h30 na quarta');
+  assert.strictEqual(f(pl.get(3).start), '2026-10-30 08:00', 'início manual força o cursor');
+  assert.strictEqual(f(pl.get(3).end), '2026-10-30 10:00', '2 h');
+  assert.strictEqual(f(pl.get(4).start), '2026-10-30 10:30', 'semana seguinte encadeia (cursor contínuo)');
+  assert.ok(!pl.has(9), 'KANBAN não tem plano');
+  const seg = P.segundaDe('2026-W44'); assert.strictEqual(P.dataLocal(seg), '2026-10-26');
+  console.log('OK — plano VOCUS');
+}

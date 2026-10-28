@@ -1,0 +1,1 @@
+{"data":{"startTime":"06:00","rate":1800,"setupMinutes":20,"oee":{"v1":0.77,"v2":0.82,"v3":0.77},"stops":{"Vocus 1":[{"date":"2026-10-24","days":2,"label":"Fim-de-semana"}],"Vocus 2":[],"Vocus 3":[]},"shiftPeriods":[]},"etag":"teste","meta":{"updatedAt":"2026-10-28T00:00:00.000Z","note":"fixture de TESTE — settings reais vêm de /api/store/planeamento_vocus_settings_v1"}}

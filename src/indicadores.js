@@ -104,7 +104,7 @@ function alertas(ordens, unidades, hoje, agora, lim) {
       if (o.atraso_fim_min > 0) add('fim_plano', o, `fim planeado ${o.fim_plano_dt} · ultrapassado há ${hhmm(o.atraso_fim_min)}`, o.atraso_fim_min);
       if (o.fim_registado_min != null && o.fim_registado_min > lim.fim_registado_h * 60) add('fim_registado', o, `fim real ${o.real_fim} · há ${hhmm(o.fim_registado_min)}`, o.fim_registado_min);
       else if (o.decorrido_min != null) {
-        const h = gran === 'fila' ? lim.processo_h_fila : lim.processo_h;
+        const h = (gran === 'fila' || o.plano_fila) ? lim.processo_h_fila : lim.processo_h;
         if (o.decorrido_min > h * 60) add('processo_longo', o, `início ${o.real_inicio} · há ${hhmm(o.decorrido_min)} (limiar ${h} h)`, o.decorrido_min);
       }
       if (!o.maquina) add('sem_maquina', o, 'em processo sem máquina atribuída');

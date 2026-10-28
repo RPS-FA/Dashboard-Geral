@@ -17,7 +17,7 @@ Só faz `GET` às apps de origem. Não tem base de dados e não altera nada. (As
 | Número de OP | 8 dígitos seguidos, isolados (não colados a letras/dígitos) e sem começar por 0 — `src/util.js numOP()`. As OPs do CSP1 começam por 11…18 (PureCork 111/114, WIM 120, DSL 130–135, Densidades 134, DSL Talis 144, DS100 150/151, VOCUS 180/185) |
 | Conta como OP | `12063090`, `12063090- LT02356473`, `14400249 -2`, `OP12063090`, `12063068 - REDES` |
 | Não conta | `AG OP - 150XXX`, `1800XXXX`, `144xxxx -1`, `AG OP (1) - 1500XXXX - PAV 1200`, lote `LT02328411`, pedido `4400042021-20`, vazio |
-| Dias até ao plano | dia planeado − hoje; DS100 (semana) e VOCUS (fila com `weekKey`) usam a **segunda-feira** dessa semana; sem data → fim da lista |
+| Dias até ao plano | dia planeado − hoje; VOCUS usa o dia de início programado pelo PlannerCork; DS100 (semana) usa a **segunda-feira** dessa semana; sem data → fim da lista |
 | Nível (KPI) | **crítico** = plano já passou ou é hoje · **sério** = próximos 7 dias · **aviso** = depois |
 | Filtro de datas | D = hoje. **Hoje** = dias até ao plano = 0 · **até D+1** = 0..1 · **até D+2** = 0..2 · **até D+3** = 0..3 (defeito) · **Personalizado** = intervalo de dias planeados · **Todas**. **As ordens com plano anterior a hoje nunca entram nos filtros D** — só em Todas/Personalizado ou pelo indicador "Antigas" (`?dias=antigas`). **Ignorar antigas** tira-as também de Todas e das contagens (guardado no browser). URL: `?dias=0|1|2|3|todas|antigas`, `?de=AAAA-MM-DD&ate=AAAA-MM-DD`, `?antigas=ignorar` |
 | Cartões | um por ordem, ordenados pelo dia planeado; **hoje pisca a vermelho**, **D+1 e D+2 piscam a amarelo**, ≥ D+3 azul, atrasadas vermelho fixo esbatido (só em Todas/Antigas), sem data cinzento (`prefers-reduced-motion` desliga o piscar). Clique abre o detalhe |
@@ -30,7 +30,7 @@ PureCork: o campo `op` da app fica vazio quando não há OP (o lote fica em `ref
 | Unidade | App | Endpoint lido | Plano | Data limite | Horas reais | Paragens |
 |---|---|---|---|---|---|---|
 | WIM | planeamento-wim | `/api/state` | dia (semana ISO + dia, por fase W/I/M) | — | sim (`*_real`, `*_hIniR/hFimR`) | `*_atraso` |
-| VOCUS | plannercork | `/api/store/planeamento_vocus_v6` (blob que a app renderiza; `/api/ops?tipo=vocus` está desactualizado desde Jul/2026) | **fila** por máquina (`weekKey` + `sortIdx`, sem data) | `dlim` (+ `dlog`) | `realStart/realEnd` | — |
+| VOCUS | plannercork | `/api/store/planeamento_vocus_v6` + `/api/store/planeamento_vocus_settings_v1` (`/api/ops?tipo=vocus` está desactualizado desde Jul/2026) | **dia + hora de início/fim programados** — porte do algoritmo do PlannerCork (`src/adaptadores/vocus_plano.js`: fila por máquina `weekKey`+`sortIdx`, cadeia contínua, `qc`+reprocesso / (rate × OEE), paragens, turnos reduzidos, setup, início manual); validado 329/329 contra a app a 28/10/2026 | `dlim` (+ `dlog`) | `realStart/realEnd` | — |
 | DS100 | plannercork | `/api/store/planeamento_ds100_v3` | **semana** (`weekKey`) | `dlim` (+ `dlog`) | — | — |
 | PURECORK | purecork | `/api/data` | dia (`dayKey`) | — | — | — |
 | DENSIDADES | planeamento-densidades | `/api/state` | dia (`dataPlano`, `_calcInicioP/_calcFimP`) | — | sim | `tempoAtraso` |
@@ -88,7 +88,7 @@ Alcance = o que cada app guarda: WIM, VOCUS, DS100, PureCork, Densidades e DSL d
 | Paragens 7 d | minutos registados pela produção em ordens com actividade real nos últimos 7 dias |
 | Manutenção (WIM: ciclos de limpeza) | aparece em "em curso", nunca conta nos indicadores |
 
-Quantidades em **unidades** (DSL e PureCork guardam milheiros → ×1000). Fuso horário: Europe/Lisbon (o servidor Railway corre em UTC).
+Quantidades em **unidades** (DSL e PureCork guardam milheiros → ×1000). Fuso horário: Europe/Lisbon — `server.js` força `process.env.TZ` porque o plano VOCUS usa `Date` local (como a app).
 
 ## Tema
 

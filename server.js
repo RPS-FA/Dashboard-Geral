@@ -11,6 +11,7 @@
 // Só faz GET às apps de origem. Não tem base de dados.
 // ============================================================
 'use strict';
+process.env.TZ = 'Europe/Lisbon'; // o plano VOCUS usa Date local (porte do PlannerCork); o Railway corre em UTC
 const express = require('express');
 const compression = require('compression');
 const path = require('path');
