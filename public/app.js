@@ -166,15 +166,14 @@ function renderKpis() {
   const base = (DADOS.ops_por_abrir || []).filter(o => !ECRA || o.unidade === ECRA);
   const vis = base.filter(o => !(ANTIGAS && antiga(o)));
   const nAntigas = base.filter(antiga).length;
-  const hoje = vis.filter(o => o.dias_plano != null && o.dias_plano <= 0).length;
-  const hojeSo = vis.filter(o => o.dias_plano === 0).length;
+  const hoje = vis.filter(o => o.dias_plano === 0).length;
   const d12 = vis.filter(o => o.dias_plano === 1 || o.dias_plano === 2).length;
   const d1 = vis.filter(o => o.dias_plano === 1).length;
   $('#kpis').innerHTML = [
     kpiTile('k-op', 'OP por abrir', vis.length, `${ANTIGAS ? 'sem as antigas · ' : ''}${vis.filter(o => o.dias_plano != null && o.dias_plano <= 3).length} até D+3 · ${vis.filter(o => o.dias_plano == null || o.dias_plano > 3).length} depois ou sem data`, 'todas', false),
-    kpiTile('k-hoje', 'Hoje', hoje, ANTIGAS || hoje === hojeSo ? 'plano para hoje — a OP tem de ser aberta já' : `${hojeSo} para hoje + ${hoje - hojeSo} atrasadas`, 'd0', hoje > 0),
+    kpiTile('k-hoje', 'Hoje', hoje, 'plano para hoje (D) — a OP tem de ser aberta já', 'd0', hoje > 0),
     kpiTile('k-d12', 'D+1 e D+2', d12, `${d1} para amanhã · ${d12 - d1} para daqui a 2 dias`, 'd2', d12 > 0),
-    kpiTile('k-antigas', 'Antigas', nAntigas, ANTIGAS ? 'plano anterior a hoje — ignoradas (ver "ignorar antigas")' : 'plano anterior a hoje — lixo de planeamento ou já feitas sem OP', 'antigas', false),
+    kpiTile('k-antigas', 'Antigas', nAntigas, 'plano anterior a hoje — não entram nos filtros D; clicar mostra-as', 'antigas', false),
   ].join('');
   $$('#kpis .kpi').forEach(el => el.addEventListener('click', () => {
     const m = el.dataset.alvo;
@@ -200,7 +199,7 @@ function passaData(o) {
   if (m === 'todas') return true;
   if (m === 'antigas') return antiga(o);
   if (m === 'custom') { const r = refPlano(o); if (!r) return false; return (!FDATA.de || r >= FDATA.de) && (!FDATA.ate || r <= FDATA.ate); }
-  const n = +m.slice(1); return o.dias_plano != null && o.dias_plano <= n;
+  const n = +m.slice(1); return o.dias_plano != null && o.dias_plano >= 0 && o.dias_plano <= n; // D = hoje; atrasadas nunca entram nos filtros D
 }
 function opsUnidade() { return (DADOS.ops_por_abrir || []).filter(o => (!ECRA || o.unidade === ECRA) && !(ANTIGAS && antiga(o))); }
 function opsVisiveis() { return opsUnidade().filter(passaData); }
@@ -217,11 +216,11 @@ function definirAntigas(ignorar) {
   history.replaceState(null, '', u); OPS_TUDO = false; renderKpis(); renderOps();
 }
 // cor do cartão: hoje (e atrasadas) = vermelho · D+1 e D+2 = amarelo · D+3 em diante = azul · sem data = cinzento
-const classeDias = o => o.dias_plano == null ? 'semdata' : (o.dias_plano <= 0 ? 'hoje' : (o.dias_plano <= 2 ? 'd' + o.dias_plano : 'd3mais'));
+const classeDias = o => o.dias_plano == null ? 'semdata' : (o.dias_plano < 0 ? 'atrasada' : (o.dias_plano === 0 ? 'hoje' : (o.dias_plano <= 2 ? 'd' + o.dias_plano : 'd3mais')));
 function etiquetaDias(o) {
   const d = o.dias_plano;
   if (d == null) return 'sem data';
-  if (d < 0) return `ATRASADA · há ${-d} d`;
+  if (d < 0) return `ATRASADA · plano há ${-d} d`;
   if (d === 0) return 'HOJE';
   return `D+${d} · ${d === 1 ? 'amanhã' : 'em ' + d + ' d'}`;
 }
@@ -233,10 +232,10 @@ function renderOps() {
   $('#opsChips').innerHTML = DADOS.unidades.map(u => `<button type="button" class="chip${ECRA === u.unidade ? ' activo' : ''}${porU[u.unidade] ? '' : ' zero'}" data-unidade="${esc(u.unidade)}" title="${porU[u.unidade] ? 'só ' + u.unidade : u.unidade + ': nada por abrir'}">${esc(u.unidade)} <b>${porU[u.unidade] || 0}</b></button>`).join('');
   $$('#opsChips .chip').forEach(el => el.addEventListener('click', () => definirEcra(ECRA === el.dataset.unidade ? '' : el.dataset.unidade)));
   // filtros rápidos de data (contagens sobre a unidade escolhida)
-  const nAte = n => daUnidade.filter(o => o.dias_plano != null && o.dias_plano <= n).length;
+  const nAte = n => daUnidade.filter(o => o.dias_plano != null && o.dias_plano >= 0 && o.dias_plano <= n).length;
   const nAntigas = (DADOS.ops_por_abrir || []).filter(o => (!ECRA || o.unidade === ECRA) && antiga(o)).length;
   const btn = (modo, rot, n, tit) => `<button type="button" class="fd ${modo}${FDATA.modo === modo ? ' activo' : ''}" data-modo="${modo}" title="${esc(tit)}">${rot} <b>${n}</b></button>`;
-  $('#opsFiltroData').innerHTML = btn('d0', 'Hoje', nAte(0), ANTIGAS ? 'plano para hoje' : 'plano para hoje (inclui atrasadas)')
+  $('#opsFiltroData').innerHTML = btn('d0', 'Hoje', nAte(0), 'plano para hoje (D); as atrasadas só aparecem em Todas / Antigas')
     + btn('d1', 'até D+1', nAte(1), 'plano até amanhã') + btn('d2', 'até D+2', nAte(2), 'plano até daqui a 2 dias') + btn('d3', 'até D+3', nAte(3), 'plano até daqui a 3 dias')
     + btn('todas', 'Todas', daUnidade.length, 'sem horizonte')
     + `<span class="fd-custom${FDATA.modo === 'custom' ? ' activo' : ''}"><button type="button" class="fd custom${FDATA.modo === 'custom' ? ' activo' : ''}" data-modo="custom" title="intervalo de dias planeados">Personalizado</button>
@@ -246,9 +245,9 @@ function renderOps() {
   const aoMudarData = () => { const de = $('#fdDe').value, ate = $('#fdAte').value; if (de || ate) definirFiltroData('custom', de, ate); };
   $('#fdDe').addEventListener('change', aoMudarData); $('#fdAte').addEventListener('change', aoMudarData);
   $('#fdAntigas').addEventListener('change', e => definirAntigas(e.target.checked));
-  const nHoje = lista.filter(o => classeDias(o) === 'hoje').length, nAmarelas = lista.filter(o => o.dias_plano === 1 || o.dias_plano === 2).length, nAtr = lista.filter(antiga).length;
+  const nHoje = lista.filter(o => o.dias_plano === 0).length, nAmarelas = lista.filter(o => o.dias_plano === 1 || o.dias_plano === 2).length, nAtr = lista.filter(antiga).length;
   const descFiltro = FDATA.modo === 'todas' ? 'todas as datas' : (FDATA.modo === 'custom' ? `plano de ${dPT(FDATA.de) === '—' ? '…' : dPT(FDATA.de)} até ${dPT(FDATA.ate) === '—' ? '…' : dPT(FDATA.ate)}` : (FDATA.modo === 'd0' ? 'plano para hoje' : (FDATA.modo === 'antigas' ? 'só antigas (plano antes de hoje)' : `plano até D+${FDATA.modo.slice(1)}`)));
-  $('#opsResumo').textContent = lista.length ? `${lista.length} sem número de OP (${descFiltro}) · ${nHoje - nAtr} para hoje · ${nAtr} atrasadas · ${nAmarelas} para D+1/D+2${ANTIGAS ? ' · antigas ignoradas' : ''}` : (daUnidade.length ? `nenhuma neste filtro (${descFiltro}); ${daUnidade.length} no total${ANTIGAS ? ', antigas ignoradas' : ''}` : 'todas as ordens activas têm número de OP');
+  $('#opsResumo').textContent = lista.length ? `${lista.length} sem número de OP (${descFiltro}) · ${nHoje} para hoje · ${nAmarelas} para D+1/D+2${nAtr ? ` · ${nAtr} atrasadas` : ''}${ANTIGAS ? ' · antigas ignoradas' : ''}` : (daUnidade.length ? `nenhuma neste filtro (${descFiltro}); ${daUnidade.length} no total${ANTIGAS ? ', antigas ignoradas' : ''}` : 'todas as ordens activas têm número de OP');
   const tv = document.body.classList.contains('tv');
   const MAX = tv ? 25 : (OPS_TUDO ? 5000 : 60);
   $('#opsCards').innerHTML = lista.length ? lista.slice(0, MAX).map(o => `<article class="ocard ${classeDias(o)} ${o.sem_op_nivel}" data-id="${esc(o.id)}" title="Ver detalhe">

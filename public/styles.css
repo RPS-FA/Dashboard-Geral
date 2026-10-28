@@ -136,6 +136,8 @@ main.a-carregar section { visibility: hidden; }
 .ocard:hover { border-color: var(--realce); }
 .ocard.d3mais { border-left-color: var(--e-aberto); }
 .ocard.semdata { border-left-color: var(--ink-3); opacity: .8; }
+.ocard.atrasada { border-left-color: var(--critico); opacity: .75; }
+.ocard.atrasada .oc-dias { color: var(--critico); }
 .ocard .oc-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .ocard .oc-unid { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); font-weight: 700; }
 .ocard .oc-dias { font-size: 11.5px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
