@@ -57,7 +57,8 @@ function enriquecer(o, hoje, semana, limite7, agora) {
   d.sem_op = d.ativa && !d.op_num;
   // Dias até ao plano (negativo = já passou): dia planeado, ou segunda-feira da semana planeada (DS100, fila VOCUS)
   const refPlano = o.data_plano || (o.semana_plano ? U.segundaDaSemana(o.semana_plano) : null);
-  d.dias_plano = refPlano ? U.difDias(hoje, refPlano) : null;
+  d.dias_corridos = refPlano ? U.difDias(hoje, refPlano) : null;
+  d.dias_plano = refPlano ? U.diasUteisAte(hoje, refPlano) : null; // D+n em DIAS ÚTEIS (futuro); atrasadas: dias corridos negativos
   d.sem_op_nivel = !d.sem_op ? null : (d.dias_plano == null ? 'aviso' : (d.dias_plano <= 0 ? 'critico' : (d.dias_plano <= 7 ? 'serio' : 'aviso')));
   return d;
 }

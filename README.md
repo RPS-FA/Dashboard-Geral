@@ -19,7 +19,7 @@ Só faz `GET` às apps de origem. Não tem base de dados e não altera nada. (As
 | Não conta | `AG OP - 150XXX`, `1800XXXX`, `144xxxx -1`, `AG OP (1) - 1500XXXX - PAV 1200`, lote `LT02328411`, pedido `4400042021-20`, vazio |
 | Dias até ao plano | dia planeado − hoje; VOCUS usa o dia de início programado pelo PlannerCork; DS100 usa o 1.º dia com frascos do separador DS100 (KANBAN: segunda-feira da semana); sem data → fim da lista |
 | Nível (KPI) | **crítico** = plano já passou ou é hoje · **sério** = próximos 7 dias · **aviso** = depois |
-| Filtro de datas | D = hoje. **Hoje** = dias até ao plano = 0 · **até D+1** = 0..1 · **até D+2** = 0..2 · **até D+3** = 0..3 (defeito) · **Personalizado** = intervalo de dias planeados · **Todas**. **As ordens com plano anterior a hoje nunca entram nos filtros D** — só em Todas/Personalizado ou pelo indicador "Antigas" (`?dias=antigas`). **Ignorar antigas** tira-as também de Todas e das contagens (guardado no browser). URL: `?dias=0|1|2|3|todas|antigas`, `?de=AAAA-MM-DD&ate=AAAA-MM-DD`, `?antigas=ignorar` |
+| Filtro de datas | D = hoje, **D+n em dias úteis** (2.ª–6.ª, sem feriados — Código do Trabalho art. 234.º n.º 1, com Sexta-Feira Santa, Páscoa e Corpo de Deus calculados; + feriado municipal de Santa Maria da Feira 20/1; `FERIADO_MUNICIPAL=MM-DD` (vazio desliga) e `FERIADOS_EXTRA=AAAA-MM-DD,MM-DD,…` para Carnaval, pontes, férias colectivas). Um plano ao sábado/domingo/feriado conta no último dia útil antes (ex.: hoje 6.ª, plano sáb. → D). `dias_plano` = dias úteis (futuro) / dias corridos negativos (atrasada); `dias_corridos` = sempre corridos. **Hoje** = D · **até D+1/D+2/D+3** (defeito D+3) · **Personalizado** (datas) · **Todas**. **As ordens com plano anterior a hoje nunca entram nos filtros D** — só em Todas/Personalizado ou no indicador "Antigas" (`?dias=antigas`). **Ignorar antigas** tira-as também de Todas e das contagens. URL: `?dias=0|1|2|3|todas|antigas`, `?de=AAAA-MM-DD&ate=AAAA-MM-DD`, `?antigas=ignorar` |
 | Cartões | **uma coluna por unidade** (7 colunas, pela ordem das fontes; com uma unidade seleccionada, grelha dessa unidade); dentro da coluna, ordenados pelo dia planeado; 20 por coluna + "mostrar todas" (TV: 6 por coluna, cabe em 1080p); cabeçalho da coluna com total, nº para hoje (vermelho) e D+1/D+2 (amarelo); **hoje vermelho**, **D+1 e D+2 amarelo** (cor fixa, sem piscar — retirado a pedido a 28/10), ≥ D+3 azul, atrasadas vermelho esbatido (só em Todas/Antigas), sem data cinzento. Clique abre o detalhe |
 | Onde | KPIs (OP por abrir · Hoje · D+1 e D+2 · Antigas — clicar aplica o filtro), chips por unidade, cartões (60 + "mostrar todas"), CSV com o filtro activo, modo TV (25 mais próximas, cabe em 1080p) |
 
@@ -103,7 +103,7 @@ FIXTURES_DIR=fixtures npm start  # sem acesso às apps: dados de TESTE em fixtur
 npm test                       # testes unitários (estados, datas, indicadores)
 ```
 
-Variáveis de ambiente (opcionais): `PORT`, `REFRESH_SEC` (defeito 60), `TIMEOUT_MS` (defeito 12000), `URL_WIM`, `URL_PLANNERCORK`, `URL_PURECORK`, `URL_DENSIDADES`, `URL_DSL`, `URL_DSL_TALIS`.
+Variáveis de ambiente (opcionais): `PORT`, `FERIADO_MUNICIPAL` (defeito `01-20`), `FERIADOS_EXTRA`, `REFRESH_SEC` (defeito 60), `TIMEOUT_MS` (defeito 12000), `URL_WIM`, `URL_PLANNERCORK`, `URL_PURECORK`, `URL_DENSIDADES`, `URL_DSL`, `URL_DSL_TALIS`.
 
 ## Endpoints
 

@@ -69,7 +69,7 @@ assert.ok(d.sem_op && d.sem_op_nivel === 'serio' && d.dias_plano === 2, 'sem OP 
 d = I.enriquecer({ ...base, op: '1800XXXX', plano_granularidade: 'fila', semana_plano: '2026-W43' }, hoje, semana, lim7, agora);
 assert.ok(d.sem_op && d.sem_op_nivel === 'critico' && d.dias_plano === -7, 'fila VOCUS da semana passada sem OP = crítico (segunda-feira da semana)');
 d = I.enriquecer({ ...base, op: '134XXXX', estado: 'pre', data_plano: '2027-01-05' }, hoje, semana, lim7, agora);
-assert.ok(d.sem_op && d.sem_op_nivel === 'aviso' && d.dias_plano === 71, 'kanban a 71 dias sem OP = aviso (sem horizonte, aparece sempre)');
+assert.ok(d.sem_op && d.sem_op_nivel === 'aviso' && d.dias_corridos === 71 && d.dias_plano === U.diasUteisAte(hoje, '2027-01-05'), 'kanban a 71 dias corridos sem OP = aviso (dias_plano em dias úteis)');
 d = I.enriquecer({ ...base, op: 'CICLO LIMPEZA', manutencao: true, data_plano: hoje }, hoje, semana, lim7, agora);
 assert.ok(!d.sem_op, 'manutenção nunca é OP por abrir');
 d = I.enriquecer({ ...base, op: 'LT02328411', estado: 'fechada', data_plano: '2026-05-28', real_fim: '2026-05-28' }, hoje, semana, lim7, agora);
@@ -180,4 +180,23 @@ process.env.TZ = 'Europe/Lisbon';
   assert.strictEqual(f(pl.get(4).inicio), '2026-11-02', 'semana seguinte: depois do carry');
   assert.ok(!pl.has(9), 'KANBAN fora');
   console.log('OK — plano DS100');
+}
+
+// --- dias úteis (D+n) ---
+{
+  assert.strictEqual(U.pascoa(2026), '2026-04-05'); assert.strictEqual(U.pascoa(2027), '2027-03-28');
+  const F = U.feriados(2026, {});
+  for (const f of ['2026-01-01', '2026-01-20', '2026-04-03', '2026-04-05', '2026-04-25', '2026-05-01', '2026-06-04', '2026-06-10', '2026-08-15', '2026-10-05', '2026-11-01', '2026-12-01', '2026-12-08', '2026-12-25']) assert.ok(F.has(f), 'feriado ' + f);
+  assert.strictEqual(F.size, 14);
+  assert.ok(!U.feriados(2026, { FERIADO_MUNICIPAL: '' }).has('2026-01-20'), 'municipal desligável');
+  assert.ok(U.feriados(2026, { FERIADOS_EXTRA: '02-17,2026-12-24' }).has('2026-02-17'), 'extra MM-DD');
+  const e = {};
+  assert.strictEqual(U.diasUteisAte('2026-10-29', '2026-10-29', e), 0, 'hoje');
+  assert.strictEqual(U.diasUteisAte('2026-10-29', '2026-10-30', e), 1, '5.ª → 6.ª = D+1');
+  assert.strictEqual(U.diasUteisAte('2026-10-29', '2026-11-02', e), 2, '5.ª → 2.ª = D+2 (fim-de-semana não conta)');
+  assert.strictEqual(U.diasUteisAte('2026-10-30', '2026-10-31', e), 0, '6.ª → sábado = D (último dia útil antes)');
+  assert.strictEqual(U.diasUteisAte('2026-10-30', '2026-11-02', e), 1, '6.ª → 2.ª = D+1');
+  assert.strictEqual(U.diasUteisAte('2026-11-30', '2026-12-02', e), 1, '1/12 feriado não conta');
+  assert.strictEqual(U.diasUteisAte('2026-10-29', '2026-10-27', e), -2, 'atrasada: dias corridos negativos');
+  console.log('OK — dias úteis');
 }

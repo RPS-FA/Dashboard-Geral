@@ -117,6 +117,56 @@ function minutosDesde(local, agora) {
   return Math.max(0, Math.round((agora.getTime() - utc) / 60000));
 }
 
+
+// ------------------------------------------------------------
+// Dias úteis (2.ª a 6.ª, sem feriados). Fontes:
+//   feriados obrigatórios — Código do Trabalho, art. 234.º, n.º 1 (1/1, Sexta-Feira Santa, Páscoa, 25/4, 1/5, Corpo de Deus,
+//   10/6, 15/8, 5/10, 1/11, 1/12, 8/12, 25/12); feriado municipal de Santa Maria da Feira: 20/1 (S. Sebastião).
+// Configurável: FERIADO_MUNICIPAL (MM-DD, defeito 01-20; vazio = nenhum) e FERIADOS_EXTRA (lista separada por vírgulas de
+// AAAA-MM-DD ou MM-DD — ex.: Carnaval, pontes, férias colectivas).
+// ------------------------------------------------------------
+function pascoa(ano) { // algoritmo anónimo gregoriano (Meeus/Jones/Butcher)
+  const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+const _feriadosCache = {};
+function feriados(ano, env) {
+  const e = env || process.env;
+  const chave = `${ano}|${e.FERIADO_MUNICIPAL === undefined ? '(defeito)' : e.FERIADO_MUNICIPAL}|${e.FERIADOS_EXTRA ?? ''}`;
+  if (_feriadosCache[chave]) return _feriadosCache[chave];
+  const p = pascoa(ano);
+  const fixos = ['01-01', '04-25', '05-01', '06-10', '08-15', '10-05', '11-01', '12-01', '12-08', '12-25'].map(md => `${ano}-${md}`);
+  const moveis = [addDias(p, -2), p, addDias(p, 60)]; // Sexta-Feira Santa, Páscoa, Corpo de Deus
+  const mun = e.FERIADO_MUNICIPAL === undefined ? '01-20' : String(e.FERIADO_MUNICIPAL).trim();
+  const extra = String(e.FERIADOS_EXTRA || '').split(',').map(x => x.trim()).filter(Boolean)
+    .map(x => /^\d{2}-\d{2}$/.test(x) ? `${ano}-${x}` : x).filter(x => x.startsWith(`${ano}-`));
+  const set = new Set([...fixos, ...moveis, ...(/^\d{2}-\d{2}$/.test(mun) ? [`${ano}-${mun}`] : []), ...extra]);
+  _feriadosCache[chave] = set;
+  return set;
+}
+/** true se 'YYYY-MM-DD' é dia útil (2.ª–6.ª e não feriado). */
+function diaUtil(ds, env) {
+  const d = dUTC(ds); if (!d) return false;
+  const dow = d.getUTCDay(); if (dow === 0 || dow === 6) return false;
+  return !feriados(d.getUTCFullYear(), env).has(ds.slice(0, 10));
+}
+/**
+ * Distância de `hoje` a `alvo` para a regra D / D+n:
+ *  · alvo > hoje → nº de DIAS ÚTEIS em (hoje, alvo] — um plano ao sábado/domingo/feriado conta como o último dia útil antes
+ *    (ex.: hoje 6.ª, plano sábado → 0 = "Hoje"; hoje 5.ª, plano 2.ª → 2 = D+2)
+ *  · alvo = hoje → 0
+ *  · alvo < hoje → dias corridos negativos (atrasada)
+ */
+function diasUteisAte(hoje, alvo, env) {
+  const cor = difDias(hoje, alvo);
+  if (cor == null || cor <= 0) return cor;
+  let n = 0;
+  for (let i = 1; i <= cor; i++) if (diaUtil(addDias(hoje, i), env)) n++;
+  return n;
+}
+
 /** Texto para pesquisa: minúsculas, sem acentos, espaços colapsados. */
 function normTexto(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 
@@ -137,4 +187,4 @@ function numOP(s) { const m = RE_OP8.exec(String(s == null ? '' : s).replace(/OP
 function num(v) { if (v == null || v === '') return 0; const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; }
 function limpa(s) { return s == null ? '' : String(s).replace(/\s+/g, ' ').trim(); }
 
-module.exports = { TZ, hoje, dataLisboa, horaLisboa, addDias, difDias, semanaISO, segundaDaSemana, domingoDaSemana, paraData, dataHora, isoParaLocal, paraMinutos, minutosDesde, normTexto, textoPesquisa, corresponde, CAMPOS_PESQUISA, numOP, num, limpa };
+module.exports = { TZ, hoje, dataLisboa, horaLisboa, addDias, difDias, semanaISO, segundaDaSemana, domingoDaSemana, paraData, dataHora, isoParaLocal, paraMinutos, minutosDesde, normTexto, textoPesquisa, corresponde, CAMPOS_PESQUISA, numOP, num, limpa, pascoa, feriados, diaUtil, diasUteisAte };

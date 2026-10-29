@@ -19,11 +19,16 @@ function planoTxt(o) {
   if (o.plano_granularidade === 'fila') return semanaTxt(o) ? `fila ${semanaTxt(o)}` : 'fila';
   return o.data_plano ? dPT(o.data_plano) + (o.hora_plano_ini ? ' ' + o.hora_plano_ini : '') : '—';
 }
+const DIAS_SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const diaSem = ds => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ds || ''); return m ? DIAS_SEM[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()] : ''; };
+const refPlanoTxt = o => o.data_plano ? `${diaSem(o.data_plano)} ${dPT(o.data_plano)}` : '';
+// D+n em DIAS ÚTEIS (2.ª–6.ª, sem feriados); atrasadas em dias corridos
 function diasTxt(o) {
   const d = o.dias_plano;
   if (d == null) return 'sem data';
-  if (d === 0) return 'hoje';
-  return d < 0 ? `há ${-d} d` : `em ${d} d`;
+  if (d < 0) return `atrasada há ${o.dias_corridos != null ? -o.dias_corridos : -d} d`;
+  if (d === 0) return o.dias_corridos > 0 ? `D (último dia útil antes do plano de ${refPlanoTxt(o)})` : 'D (hoje)';
+  return `D+${d} úteis`;
 }
 const ORDEM_UNID = ['PURECORK', 'DSL', 'DENSIDADES', 'WIM', 'VOCUS', 'DS100', 'DSL TALIS'];
 
@@ -170,9 +175,9 @@ function renderKpis() {
   const d12 = vis.filter(o => o.dias_plano === 1 || o.dias_plano === 2).length;
   const d1 = vis.filter(o => o.dias_plano === 1).length;
   $('#kpis').innerHTML = [
-    kpiTile('k-op', 'OP por abrir', vis.length, `${ANTIGAS ? 'sem as antigas · ' : ''}${vis.filter(o => o.dias_plano != null && o.dias_plano <= 3).length} até D+3 · ${vis.filter(o => o.dias_plano == null || o.dias_plano > 3).length} depois ou sem data`, 'todas', false),
-    kpiTile('k-hoje', 'Hoje', hoje, 'plano para hoje (D) — a OP tem de ser aberta já', 'd0', hoje > 0),
-    kpiTile('k-d12', 'D+1 e D+2', d12, `${d1} para amanhã · ${d12 - d1} para daqui a 2 dias`, 'd2', d12 > 0),
+    kpiTile('k-op', 'OP por abrir', vis.length, `${ANTIGAS ? 'sem as antigas · ' : ''}${vis.filter(o => o.dias_plano != null && o.dias_plano >= 0 && o.dias_plano <= 3).length} de D a D+3 · ${vis.filter(o => o.dias_plano == null || o.dias_plano > 3).length} depois ou sem data${ANTIGAS ? '' : ` · ${vis.filter(antiga).length} antigas`}`, 'todas', false),
+    kpiTile('k-hoje', 'Hoje (D)', hoje, 'plano hoje (ou fim-de-semana/feriado seguinte) — abrir a OP já', 'd0', hoje > 0),
+    kpiTile('k-d12', 'D+1 e D+2', d12, `${d1} em D+1 · ${d12 - d1} em D+2 (dias úteis)`, 'd2', d12 > 0),
     kpiTile('k-antigas', 'Antigas', nAntigas, 'plano anterior a hoje — não entram nos filtros D; clicar mostra-as', 'antigas', false),
   ].join('');
   $$('#kpis .kpi').forEach(el => el.addEventListener('click', () => {
@@ -220,9 +225,9 @@ const classeDias = o => o.dias_plano == null ? 'semdata' : (o.dias_plano < 0 ? '
 function etiquetaDias(o) {
   const d = o.dias_plano;
   if (d == null) return 'sem data';
-  if (d < 0) return `ATRASADA · ${-d} d`;
-  if (d === 0) return 'HOJE';
-  return `D+${d} · ${d === 1 ? 'amanhã' : 'em ' + d + ' d'}`;
+  if (d < 0) return `ATRASADA · ${o.dias_corridos != null ? -o.dias_corridos : -d} d`;
+  if (d === 0) return o.dias_corridos > 0 ? `HOJE · plano ${refPlanoTxt(o)}` : 'HOJE';
+  return `D+${d} · ${refPlanoTxt(o)}`;
 }
 function renderOps() {
   const todas = DADOS.ops_por_abrir || [];
@@ -235,8 +240,8 @@ function renderOps() {
   const nAte = n => daUnidade.filter(o => o.dias_plano != null && o.dias_plano >= 0 && o.dias_plano <= n).length;
   const nAntigas = (DADOS.ops_por_abrir || []).filter(o => (!ECRA || o.unidade === ECRA) && antiga(o)).length;
   const btn = (modo, rot, n, tit) => `<button type="button" class="fd ${modo}${FDATA.modo === modo ? ' activo' : ''}" data-modo="${modo}" title="${esc(tit)}">${rot} <b>${n}</b></button>`;
-  $('#opsFiltroData').innerHTML = btn('d0', 'Hoje', nAte(0), 'plano para hoje (D); as atrasadas só aparecem em Todas / Antigas')
-    + btn('d1', 'até D+1', nAte(1), 'plano até amanhã') + btn('d2', 'até D+2', nAte(2), 'plano até daqui a 2 dias') + btn('d3', 'até D+3', nAte(3), 'plano até daqui a 3 dias')
+  $('#opsFiltroData').innerHTML = btn('d0', 'Hoje', nAte(0), 'D = hoje (inclui planos ao fim-de-semana/feriado que vêm a seguir); as atrasadas só aparecem em Todas / Antigas')
+    + btn('d1', 'até D+1', nAte(1), 'até ao próximo dia útil') + btn('d2', 'até D+2', nAte(2), 'até daqui a 2 dias úteis') + btn('d3', 'até D+3', nAte(3), 'até daqui a 3 dias úteis')
     + btn('todas', 'Todas', daUnidade.length, 'sem horizonte')
     + `<span class="fd-custom${FDATA.modo === 'custom' ? ' activo' : ''}"><button type="button" class="fd custom${FDATA.modo === 'custom' ? ' activo' : ''}" data-modo="custom" title="intervalo de dias planeados">Personalizado</button>
        <label>de <input type="date" id="fdDe" value="${esc(FDATA.de)}"></label><label>até <input type="date" id="fdAte" value="${esc(FDATA.ate)}"></label></span>
@@ -246,7 +251,7 @@ function renderOps() {
   $('#fdDe').addEventListener('change', aoMudarData); $('#fdAte').addEventListener('change', aoMudarData);
   $('#fdAntigas').addEventListener('change', e => definirAntigas(e.target.checked));
   const nHoje = lista.filter(o => o.dias_plano === 0).length, nAmarelas = lista.filter(o => o.dias_plano === 1 || o.dias_plano === 2).length, nAtr = lista.filter(antiga).length;
-  const descFiltro = FDATA.modo === 'todas' ? 'todas as datas' : (FDATA.modo === 'custom' ? `plano de ${dPT(FDATA.de) === '—' ? '…' : dPT(FDATA.de)} até ${dPT(FDATA.ate) === '—' ? '…' : dPT(FDATA.ate)}` : (FDATA.modo === 'd0' ? 'plano para hoje' : (FDATA.modo === 'antigas' ? 'só antigas (plano antes de hoje)' : `plano até D+${FDATA.modo.slice(1)}`)));
+  const descFiltro = FDATA.modo === 'todas' ? 'todas as datas' : (FDATA.modo === 'custom' ? `plano de ${dPT(FDATA.de) === '—' ? '…' : dPT(FDATA.de)} até ${dPT(FDATA.ate) === '—' ? '…' : dPT(FDATA.ate)}` : (FDATA.modo === 'd0' ? 'D' : (FDATA.modo === 'antigas' ? 'só antigas (plano antes de hoje)' : `até D+${FDATA.modo.slice(1)} úteis`)));
   $('#opsResumo').textContent = lista.length ? `${lista.length} sem número de OP (${descFiltro}) · ${nHoje} para hoje · ${nAmarelas} para D+1/D+2${nAtr ? ` · ${nAtr} atrasadas` : ''}${ANTIGAS ? ' · antigas ignoradas' : ''}` : (daUnidade.length ? `nenhuma neste filtro (${descFiltro}); ${daUnidade.length} no total${ANTIGAS ? ', antigas ignoradas' : ''}` : 'todas as ordens activas têm número de OP');
   const tv = document.body.classList.contains('tv');
   const MAX = tv ? 6 : (OPS_TUDO ? 5000 : 20); // por coluna (unidade)
