@@ -157,3 +157,27 @@ process.env.TZ = 'Europe/Lisbon';
   const seg = P.segundaDe('2026-W44'); assert.strictEqual(P.dataLocal(seg), '2026-10-26');
   console.log('OK — plano VOCUS');
 }
+
+// --- plano DS100 (porte do separador DS100 do PlannerCork) ---
+{
+  const D = require('../src/adaptadores/ds100_plano');
+  const S = { ds100DailyTarget: 1000, ds100CapsByWeek: { '2026-W44': [0, 1000, 1000, 1000, 1000, 0] } };
+  const ops = [
+    { id: 1, maquina: 'DS100', weekKey: '2026-W44', sortIdx: 0, analise: 'DS100_2', qtEntrada: 1000 },  // 500 frascos → 3.ª 27/10 (2.ª tem cap 0)
+    { id: 2, maquina: 'DS100', weekKey: '2026-W44', sortIdx: 1, analise: 'DS100_1', qtEntrada: 3200 },  // 3200 → 500 na 3.ª, 1000 4.ª/5.ª/6.ª = 3500 > 3200 → acaba 6.ª
+    { id: 3, maquina: 'DS100', weekKey: '2026-W44', sortIdx: 2, analise: 'DS100_4', qtEntrada: 4000 },  // 1000 → 300 na 6.ª, resto 700 transborda para W45 (2.ª 02/11)
+    { id: 4, maquina: 'CSP2', weekKey: '2026-W45', sortIdx: 0, analise: 'DS100_1', qtEntrada: 500 },    // depois do carry na W45
+    { id: 9, maquina: 'KANBAN', weekKey: '2026-W44', sortIdx: 0, analise: 'DS100_1', qtEntrada: 999 },  // KANBAN não entra
+  ];
+  const pl = D.calcularPlano(ops, S);
+  const f = x => D.dataLocal(x);
+  assert.strictEqual(D.frascos(ops[0]), 500); assert.strictEqual(D.frascos(ops[2]), 1000);
+  assert.strictEqual(f(pl.get(1).inicio), '2026-10-27', 'DS100: 2.ª com capacidade 0 → começa 3.ª');
+  assert.strictEqual(f(pl.get(2).inicio), '2026-10-27'); assert.strictEqual(f(pl.get(2).fim), '2026-10-30');
+  assert.strictEqual(f(pl.get(3).inicio), '2026-10-30', 'começa na 6.ª com o que sobra');
+  assert.strictEqual(f(pl.get(3).fim), '2026-11-02', 'transborda para a 2.ª da semana seguinte');
+  assert.strictEqual(pl.get(3).colocados, 1000);
+  assert.strictEqual(f(pl.get(4).inicio), '2026-11-02', 'semana seguinte: depois do carry');
+  assert.ok(!pl.has(9), 'KANBAN fora');
+  console.log('OK — plano DS100');
+}
