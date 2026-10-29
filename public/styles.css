@@ -236,3 +236,53 @@ body.tv.uma-unidade .kpi .val { font-size: 64px; }
   .kpi .val { font-size: 32px; }
   .det-tab th { width: 90px; }
 }
+
+/* ---- separadores ---- */
+.vistas { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid var(--linha); background: var(--superficie); }
+.vistas .vista { background: none; border: 0; border-bottom: 3px solid transparent; padding: 9px 14px 8px; cursor: pointer; color: var(--ink-2); font-weight: 600; font-size: 13.5px; }
+.vistas .vista .nota { font-weight: 400; margin-left: 4px; }
+.vistas .vista:hover { color: var(--ink); }
+.vistas .vista.activo { color: var(--ink); border-bottom-color: var(--realce); }
+
+/* ---- encomendas ---- */
+.enc-sec { margin-bottom: 22px; }
+.enc-kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.enc-kpis .kpi { min-height: 84px; padding: 10px 14px; }
+.enc-kpis .kpi .val { font-size: 32px; }
+.kpi.activo { outline: 2px solid var(--realce); }
+.enc-filtros label { color: var(--ink-2); display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; }
+.enc-filtros select, .enc-filtros input[type=search] { background: var(--plano); border: 1px solid var(--borda); border-radius: 6px; padding: 4px 8px; }
+.enc-filtros .enc-pesq input { min-width: 260px; }
+.enc-filtros .fd-antigas { margin-left: 0; }
+.enc-wrap { background: var(--superficie); border: 1px solid var(--borda); border-radius: 12px; box-shadow: var(--sombra); overflow: auto; max-height: 72vh; }
+#encTab, .enc-ords { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+#encTab th, #encTab td, .enc-ords th, .enc-ords td { padding: 6px 10px; border-bottom: 1px solid var(--linha); text-align: left; vertical-align: top; white-space: nowrap; }
+#encTab th { position: sticky; top: 0; background: var(--superficie); color: var(--ink-2); font-weight: 600; z-index: 1; }
+#encTab td.num, #encTab th.num, .enc-ords td.num, .enc-ords th.num { text-align: right; font-variant-numeric: tabular-nums; }
+#encTab td.cliente { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+#encTab td.produto { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+#encTab td.onde { white-space: normal; min-width: 180px; }
+#encTab tr.enc-l { cursor: pointer; }
+#encTab tr.enc-l:hover td { background: var(--plano); }
+#encTab tr.enc-l.risco td:first-child { box-shadow: inset 4px 0 0 var(--critico); }
+#encTab tr.enc-l.conc td { color: var(--ink-3); }
+#encTab td.lnk a { text-decoration: none; }
+#encTab tr.enc-det > td { background: var(--plano); white-space: normal; padding: 10px 14px 14px; }
+.enc-ords th { color: var(--ink-3); font-weight: 600; font-size: 11.5px; background: transparent; }
+.enc-ords tr.proc td:first-child { box-shadow: inset 3px 0 0 var(--em-processo); }
+.enc-ords tr.feito td { color: var(--ink-3); }
+.enc-obs { margin-top: 8px; font-size: 12px; color: var(--ink-2); display: grid; gap: 3px; white-space: pre-line; }
+.uchip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid var(--borda); margin: 1px 2px 1px 0; cursor: help; }
+.uchip.proc { background: var(--em-processo); color: #000; border-color: var(--em-processo); }
+.uchip.plan { background: transparent; color: var(--realce); border-color: var(--realce); }
+.uchip.feito { background: transparent; color: var(--ink-3); border-color: var(--linha); text-decoration: line-through; }
+.eest { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 11.5px; font-weight: 700; border: 1px solid var(--borda); }
+.eest.sem_plano { color: var(--ink-3); }
+.eest.planeada { color: var(--realce); border-color: var(--realce); }
+.eest.em_curso { color: #000; background: var(--em-processo); border-color: var(--em-processo); }
+.eest.concluida { color: var(--bom-ink); border-color: var(--bom); }
+body.tv #btnEncCarregar, body.tv #btnEncCsv, body.tv .enc-filtros { display: none; }
+body.tv #encTab { font-size: 14px; }
+@media (max-width: 720px) { .vistas { padding: 0 8px; } .enc-filtros .enc-pesq input { min-width: 160px; } }
+
+.atr-plano { color: var(--serio); font-weight: 600; }

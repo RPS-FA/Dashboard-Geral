@@ -6,6 +6,8 @@
 //   GET /api/resumo       — indicadores + ordens enriquecidas (JSON)
 //   GET /api/resumo?so=kpi — só indicadores (sem a lista de ordens)
 //   GET /api/procurar?q=… — pesquisa global (todas as unidades, activas e fechadas)
+//   GET  /api/encomendas   — encomendas (Encomendas.xlsx carregado) cruzadas com as ordens dos planeamentos
+//   POST /api/encomendas   — carrega as linhas do Encomendas.xlsx (JSON, lido no browser); UPLOAD_TOKEN opcional
 //   POST /api/refresh     — força nova leitura das fontes
 //   GET /health
 // Só faz GET às apps de origem. Não tem base de dados.
@@ -16,6 +18,7 @@ const express = require('express');
 const compression = require('compression');
 const path = require('path');
 const agregador = require('./src/agregador');
+const encomendas = require('./src/encomendas');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,6 +48,25 @@ app.get('/api/procurar', (req, res) => {
     const resultados = r.ordens.filter(o => U.corresponde(U.textoPesquisa(o), q)).slice(0, 200);
     res.json({ q, hoje: r.hoje, n: resultados.length, resultados });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// Encomendas (rastreio por Pedido_Item)
+app.get('/api/encomendas', (_req, res) => {
+  try {
+    const r = agregador.resumo();
+    const x = encomendas.cruzar(r.ordens, r.hoje);
+    if (!x) return res.json({ carregado: false, mensagem: 'Ainda não foi carregado nenhum Encomendas.xlsx', upload_protegido: !!process.env.UPLOAD_TOKEN });
+    res.json({ carregado: true, upload_protegido: !!process.env.UPLOAD_TOKEN, ...x });
+  } catch (e) { console.error('[api] encomendas', e); res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/encomendas', express.json({ limit: '15mb' }), (req, res) => {
+  try {
+    const tok = process.env.UPLOAD_TOKEN;
+    if (tok && req.get('x-upload-token') !== tok) return res.status(401).json({ ok: false, error: 'código de carregamento inválido' });
+    const dados = encomendas.validar(req.body);
+    const st = encomendas.guardar(dados, req.get('x-upload-por') || '');
+    console.log(`[encomendas] carregado ${st.ficheiro}: ${st.linhas.length} Pedido_Item (persistido: ${st.persistido})`);
+    res.json({ ok: true, n: st.linhas.length, carregado_em: st.carregado_em, persistido: st.persistido, erro_persistencia: st.erro_persistencia || null });
+  } catch (e) { res.status(400).json({ ok: false, error: e.message }); }
 });
 app.post('/api/refresh', async (_req, res) => {
   try { await agregador.actualizar(); res.json({ ok: true, ultima_agregacao: agregador.resumo().ultima_agregacao }); }

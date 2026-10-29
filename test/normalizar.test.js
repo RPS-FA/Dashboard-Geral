@@ -200,3 +200,39 @@ process.env.TZ = 'Europe/Lisbon';
   assert.strictEqual(U.diasUteisAte('2026-10-29', '2026-10-27', e), -2, 'atrasada: dias corridos negativos');
   console.log('OK — dias úteis');
 }
+
+// --- encomendas (rastreio por Pedido_Item) ---
+{
+  const EN = require('../src/encomendas');
+  assert.strictEqual(EN.normPI('4400041825_30'), '4400041825-30'); assert.strictEqual(EN.normPI(' 4400040818 -60'), '4400040818-60'); assert.strictEqual(EN.normPI('4400041503/010'), '4400041503-10'); assert.strictEqual(EN.normPI('POT26-01159'), null);
+  assert.deepStrictEqual([...EN.opsEm('LAV 12063175 (5k) + DSL 14400252 + LT02391282 + 4400041825-30')], ['12063175', '14400252']);
+  const d = EN.validar({ ficheiro: 'Encomendas.xlsx', linhas: [
+    { folha: 'Encomendas HOJE', pedido_item: '4400000001_10', alias: 'ENC 1', qt: 10.5, data_prometida: '2026-11-10', obs: { OBS: 'LAV 12000001 29/10 + DSL 13000001' } },
+    { folha: 'Encomendas HOJE', pedido_item: '4400000002_20', data_desejada: '2026-10-20', obs: {} },
+    { folha: 'Encomendas HOJE', pedido_item: '4400000003_10', data_prometida: '2026-11-05', obs: {} },
+    { folha: 'Acompanhamentos', pedido_item: '4400000001_10', obs: { OBS: 'VOCUS 18000001' } },
+    { folha: 'Encomendas HOJE', pedido_item: '_' },
+  ] });
+  assert.strictEqual(d.linhas.length, 3, 'deduplica por Pedido_Item e ignora "_"');
+  const e1 = d.linhas.find(x => x.pedido_item === '4400000001-10');
+  assert.deepStrictEqual(e1.folhas, ['Encomendas HOJE', 'Acompanhamentos']); assert.ok(Object.keys(e1.obs).length === 2, 'junta OBS das duas folhas');
+  EN._definir({ ...d, carregado_em: '2026-10-29T10:00:00Z' });
+  const o = (x) => ({ manutencao: false, terminal: false, em_curso: false, estado: 'aberto', ...x });
+  const ordens = [
+    o({ id: 'wim-1', unidade: 'WIM', op: '12000001', op_num: '12000001', estado: 'terminada', terminal: true, real_fim: '2026-10-29 10:00', data_plano: '2026-10-29' }),
+    o({ id: 'dsl-1', unidade: 'DSL', op: '13000001', op_num: '13000001', estado: 'em_processo', em_curso: true, data_plano: '2026-10-30' }),
+    o({ id: 'voc-1', unidade: 'VOCUS', op: '18000001', op_num: '18000001', pedido: '4400000001-10', data_plano: '2026-11-03', data_fim_plano: '2026-11-12' }),
+    o({ id: 'ds-1', unidade: 'DS100', op: 'AG OP - 150XXX', op_num: null, sem_op: true, pedido: '4400000003-10', data_plano: '2026-11-02', data_fim_plano: '2026-11-03' }),
+  ];
+  const x = EN.cruzar(ordens, '2026-10-29');
+  const g = pi => x.encomendas.find(e => e.pedido_item === pi);
+  const a = g('4400000001-10');
+  assert.strictEqual(a.estado, 'em_curso'); assert.deepStrictEqual(a.onde, ['DSL']); assert.strictEqual(a.fim_previsto, '2026-11-12');
+  assert.strictEqual(a.risco, 'fim_depois_do_prazo'); assert.strictEqual(a.folga_dias, -2);
+  assert.strictEqual(a.ordens.find(z => z.id === 'voc-1').via, 'obs+pedido', 'ligação pelas duas vias');
+  assert.strictEqual(g('4400000002-20').estado, 'sem_plano'); assert.strictEqual(g('4400000002-20').risco, 'prazo_passado');
+  const c = g('4400000003-10'); assert.strictEqual(c.estado, 'planeada'); assert.ok(c.sem_op); assert.strictEqual(c.folga_dias, 2); assert.strictEqual(c.risco, null);
+  assert.strictEqual(x.totais.total, 3); assert.strictEqual(x.totais.em_risco, 2);
+  EN._definir(null);
+  console.log('OK — encomendas');
+}

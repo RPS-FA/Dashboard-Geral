@@ -63,6 +63,22 @@ Confirmado nos dados de produção (26/10/2026):
 | Plano antigo por fechar | activa com dia planeado há mais de N dias | `ALERTA_PLANO_DIAS` (14) |
 | Espera JOB há demasiado tempo | terminada à espera de JOB SAP | `ALERTA_JOB_DIAS` (7) |
 
+## Encomendas — rastreio por Pedido_Item (separador "Encomendas")
+
+Responde a "onde está a ser processada cada encomenda e quando termina".
+
+| | |
+|---|---|
+| Fonte | `Encomendas.xlsx` (SharePoint *Industrial Planning - Encomendas*), folhas cujo nome começa por **"Encomendas"** e **"Acompanhamentos"** (as outras — DS+, PR, Resumo… — são ignoradas e listadas no carregamento). A folha "Encomendas" estava vazia a 29/10/2026; os dados estão em "Encomendas HOJE". |
+| Carregamento | botão **⬆ Carregar Encomendas.xlsx** no separador. O Excel é lido **no browser** (SheetJS CE 0.18.5, servido localmente em `public/vendor/`) e só as colunas necessárias seguem para `POST /api/encomendas`. O Railway não consegue ler o SharePoint nem o PC — por isso o upload. |
+| Persistência | grava `encomendas.json` em `DATA_DIR` (ou `RAILWAY_VOLUME_MOUNT_PATH`). **Sem volume, um novo deploy apaga o ficheiro** (o ecrã avisa) → Railway → serviço → *Volumes* → montar em `/data` (o Railway define `RAILWAY_VOLUME_MOUNT_PATH`). |
+| Protecção | opcional: variável `UPLOAD_TOKEN` no Railway → o carregamento pede o código (guardado no browser). Sem ela, qualquer pessoa com o link pode substituir o ficheiro. |
+| Ligação às ordens | **(1) pedido** — o Pedido_Item (`4400041825_30` = `4400041825-30`) aparece no campo pedido/OP/lote/obs da ordem na app (VOCUS, DS100, Densidades, DSL Talis registam-no; WIM e DSL quase nunca; PureCork não tem o campo). **(2) OBS do Excel** — as colunas OBS/OBS AS/OBS FS citam OPs de 8 dígitos ("LAV 12063175", "DSL 14400252", "PC 11402913") → ligadas pelo número de OP. Ao vivo a 29/10: 163 de 253 Pedido_Item ligados (93 pelas duas vias, 40 só pedido, 30 só OBS); 90 sem nenhuma ordem nas apps. |
+| Estado | *Sem planeamento* (nenhuma ordem) · *Planeada* (nenhuma começou) · *Em curso* (alguma em processo, ou parte feita) · *Concluída nas apps* (todas as ordens ligadas terminadas). Não inclui expedição/SAP. |
+| Fim previsto | maior fim planeado das ordens ainda activas (VOCUS/DS100: porte do PlannerCork; Densidades/Talis: fim calculado pela app; WIM: só a fase actual). **Folga** = dias corridos entre fim previsto e data prometida (ou desejada, se não houver prometida). |
+| Em risco | prazo já passou e não concluída · fim previsto depois do prazo · sem planeamento com prazo a ≤ 14 dias. |
+| Segurança | SheetJS 0.18.5 tem a CVE-2023-30533 (prototype pollution com ficheiro malicioso; corrigida na 0.19.3, que não está no npm). Risco aceite: só lê o Encomendas.xlsx interno, no browser de quem carrega. Trocar por 0.20.x de cdn.sheetjs.com quando a rede o permitir. |
+
 ## Pesquisa global
 
 A caixa no cabeçalho procura **em todos os planeamentos ao mesmo tempo** — todas as unidades, ordens activas e fechadas — por OP, lote, pedido/encomenda, cliente, produto, calibre, máquina, fase, estado de origem e observações. Várias palavras = todas têm de aparecer (`csu 45x240`); acentos e maiúsculas são ignorados. Os resultados agrupam-se por unidade (máx. 12 por unidade); clicar numa ordem abre o detalhe (todos os campos, estado, plano, real, ligação à app). `Esc` fecha.
@@ -103,12 +119,13 @@ FIXTURES_DIR=fixtures npm start  # sem acesso às apps: dados de TESTE em fixtur
 npm test                       # testes unitários (estados, datas, indicadores)
 ```
 
-Variáveis de ambiente (opcionais): `PORT`, `FERIADO_MUNICIPAL` (defeito `01-20`), `FERIADOS_EXTRA`, `REFRESH_SEC` (defeito 60), `TIMEOUT_MS` (defeito 12000), `URL_WIM`, `URL_PLANNERCORK`, `URL_PURECORK`, `URL_DENSIDADES`, `URL_DSL`, `URL_DSL_TALIS`.
+Variáveis de ambiente (opcionais): `PORT`, `DATA_DIR`, `UPLOAD_TOKEN`, `FERIADO_MUNICIPAL` (defeito `01-20`), `FERIADOS_EXTRA`, `REFRESH_SEC` (defeito 60), `TIMEOUT_MS` (defeito 12000), `URL_WIM`, `URL_PLANNERCORK`, `URL_PURECORK`, `URL_DENSIDADES`, `URL_DSL`, `URL_DSL_TALIS`.
 
 ## Endpoints
 
 - `GET /` — dashboard. `?tv=1` abre em modo ecrã (KPIs + OPs por abrir mais próximas + excepções; cabe num 1080p).
 - `GET /api/resumo` — indicadores por unidade (inclui `sem_op`, `sem_op_passado`, `sem_op_7d`), `ops_por_abrir` (ordenada), excepções (`alertas`), painel de máquinas (`unidades[].maquinas`, sem UI) e lista de ordens enriquecidas (`op_num`, `sem_op`, `sem_op_nivel`, `dias_plano`). `?so=kpi` omite a lista.
+- `GET /api/encomendas` — encomendas carregadas cruzadas com as ordens (estado, onde está, fim previsto, folga, risco, ordens ligadas). `POST /api/encomendas` — carrega as linhas (JSON; cabeçalho `x-upload-token` se `UPLOAD_TOKEN`).
 - `GET /api/procurar?q=…` — pesquisa global (todas as unidades, activas e fechadas; todas as palavras têm de aparecer).
 - `POST /api/refresh` — força nova leitura das fontes.
 - `GET /health` — `{status, fontes_ok, fontes_total, ultima_agregacao}`.
