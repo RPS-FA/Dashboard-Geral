@@ -286,3 +286,14 @@ body.tv #encTab { font-size: 14px; }
 @media (max-width: 720px) { .vistas { padding: 0 8px; } .enc-filtros .enc-pesq input { min-width: 160px; } }
 
 .atr-plano { color: var(--serio); font-weight: 600; }
+
+/* encomendas: ordenar e filtrar por coluna */
+#encTab thead th.ord { cursor: pointer; user-select: none; }
+#encTab thead th.ord:hover { color: var(--ink); }
+#encTab thead th.sort-asc::after { content: " ▲"; font-size: 9px; color: var(--realce); }
+#encTab thead th.sort-desc::after { content: " ▼"; font-size: 9px; color: var(--realce); }
+#encTab thead tr.filtros-col th { top: 31px; padding: 4px 6px 6px; }
+#encTab thead tr.filtros-col input { width: 100%; min-width: 60px; background: var(--plano); border: 1px solid var(--borda); border-radius: 5px; padding: 3px 6px; font-size: 11.5px; font-weight: 400; }
+#encTab thead tr.filtros-col th.num input { text-align: right; }
+#encTab thead tr.filtros-col .btn { padding: 1px 7px; font-size: 11px; }
+body.tv #encTab thead tr.filtros-col { display: none; }

@@ -310,7 +310,7 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = fal
 // ============================================================
 let VISTA = new URLSearchParams(location.search).get('vista') === 'enc' ? 'enc' : 'ops';
 let ENC = null; // resposta de /api/encomendas
-let ENC_FILTRO = { estado: '', unidade: '', pesq: '', risco: false, semConc: false, ordem: 'prazo' };
+let ENC_FILTRO = { estado: '', unidade: '', pesq: '', risco: false, semConc: false };
 const ENC_ABERTOS = new Set();
 let ENC_TUDO = false;
 const SHEETJS = 'vendor/xlsx-0.18.5.full.min.js'; // SheetJS CE 0.18.5 (npm), servido localmente — ver README (CVE-2023-30533)
@@ -341,9 +341,45 @@ function chipUnidade(u, ords) {
 }
 const folgaTxt = e => e.folga_dias == null ? '—' : (e.folga_dias > 0 ? `+${e.folga_dias} d` : `${e.folga_dias} d`);
 
+// Colunas da tabela de encomendas: texto (para pesquisa/filtro por coluna) e valor (para ordenar). Nulos ficam sempre no fim.
+const ENC_EST_ORD = { sem_plano: 0, planeada: 1, em_curso: 2, concluida: 3 };
+const encOndeTxt = e => e.em_processo.length ? `em processo: ${e.em_processo.map(x => x.unidade + (x.maquina ? ' · ' + x.maquina : '')).join(', ')}` : (e.proxima ? `próxima: ${e.proxima.unidade} ${dPT(e.proxima.data_plano)}${e.proxima.hora_plano_ini ? ' ' + e.proxima.hora_plano_ini : ''}` : '');
+const dTxt = d => d ? `${d} ${dPT(d)} ${diaSem(d)}` : '';
+const ENC_COLS = [
+  { k: 'pi', rot: 'Pedido_Item', txt: e => [e.pedido_item, e.pedido_item.replace('-', '_'), e.n_pedido, (e.folhas || []).join(' ')].join(' '), val: e => e.pedido_item.replace(/-(\d+)$/, (m, i) => '-' + i.padStart(3, '0')) },
+  { k: 'cli', rot: 'Cliente · alias', txt: e => [e.alias, e.cliente, e.desc_cliente].join(' '), val: e => (e.alias || e.cliente || '').toLowerCase() || null },
+  { k: 'mat', rot: 'Material', txt: e => [e.descricao, e.material, e.servicos, e.calibre, e.qualidade, e.lavacao].join(' '), val: e => (e.descricao || e.material || '').toLowerCase() || null },
+  { k: 'qt', rot: 'Qt', num: true, txt: e => e.qt != null ? String(e.qt).replace('.', ',') : '', val: e => e.qt },
+  { k: 'prazo', rot: 'Prazo', txt: e => dTxt(e.prazo) + (e.prazo_tipo ? ' ' + e.prazo_tipo : ''), val: e => e.prazo },
+  { k: 'estado', rot: 'Estado', txt: e => [e.estado_label, e.sem_op ? 'sem OP' : '', RISCO_TXT[e.risco] || '', e.risco ? 'risco' : ''].join(' '), val: e => ENC_EST_ORD[e.estado] * 10 + (e.risco ? 0 : 1) },
+  { k: 'onde', rot: 'Onde está', txt: e => [e.unidades.join(' '), encOndeTxt(e), e.ordens.map(o => `${o.op} ${o.maquina || ''}`).join(' '), e.n_ordens ? '' : 'não encontrada'].join(' '), val: e => e.em_processo.length ? 'a' + e.em_processo[0].unidade : (e.proxima ? 'b' + (e.proxima.data_plano || '9999') : (e.unidades[0] ? 'c' + e.unidades[0] : null)) },
+  { k: 'fim', rot: 'Fim previsto', txt: e => e.estado === 'concluida' ? 'terminou ' + dTxt(e.fim_real) : (e.fim_previsto ? dTxt(e.fim_previsto) : (e.n_ordens ? 'sem data' : '')), val: e => e.fim_previsto || e.fim_real },
+  { k: 'folga', rot: 'Folga', num: true, txt: e => e.folga_dias == null ? '' : String(e.folga_dias), val: e => e.folga_dias },
+];
+let ENC_ORD = { k: 'prazo', dir: 1 };
+const ENC_COLF = {}; // filtro por coluna: k -> texto
+function montarCabEnc() {
+  const th = $('#encHead');
+  if (!th.dataset.montado) {
+    th.innerHTML = `<tr>${ENC_COLS.map(c => `<th data-k="${c.k}" class="${c.num ? 'num ' : ''}ord" title="Clicar para ordenar (outra vez inverte)">${esc(c.rot)}</th>`).join('')}<th></th></tr>
+      <tr class="filtros-col">${ENC_COLS.map(c => `<th class="${c.num ? 'num' : ''}"><input type="search" data-k="${c.k}" placeholder="${c.num ? '>0, <-5, =10…' : 'filtrar…'}" aria-label="Filtrar ${esc(c.rot)}"></th>`).join('')}<th><button type="button" class="btn btn-sec" id="encLimparCols" title="Limpar filtros das colunas">✕</button></th></tr>`;
+    th.dataset.montado = '1';
+    $$('#encHead th.ord').forEach(h => h.addEventListener('click', () => { const k = h.dataset.k; ENC_ORD = ENC_ORD.k === k ? { k, dir: -ENC_ORD.dir } : { k, dir: 1 }; renderEnc(); }));
+    $$('#encHead .filtros-col input').forEach(i => i.addEventListener('input', () => { ENC_COLF[i.dataset.k] = i.value; ENC_TUDO = false; renderEnc(); }));
+    $('#encLimparCols').addEventListener('click', () => { for (const k of Object.keys(ENC_COLF)) delete ENC_COLF[k]; $$('#encHead .filtros-col input').forEach(i => { i.value = ''; }); renderEnc(); });
+  }
+  $$('#encHead th.ord').forEach(h => { h.classList.toggle('sort-asc', ENC_ORD.k === h.dataset.k && ENC_ORD.dir === 1); h.classList.toggle('sort-desc', ENC_ORD.k === h.dataset.k && ENC_ORD.dir === -1); });
+}
+// filtro de uma coluna: palavras (todas têm de aparecer, sem acentos) ou, em colunas numéricas, >n <n >=n <=n =n
+function passaColuna(c, e, f) {
+  const q = String(f || '').trim(); if (!q) return true;
+  if (c.num) { const m = /^(>=|<=|>|<|=)\s*(-?\d+(?:[.,]\d+)?)$/.exec(q); if (m) { const v = c.val(e); if (v == null) return false; const n = parseFloat(m[2].replace(',', '.')); return m[1] === '>' ? v > n : m[1] === '<' ? v < n : m[1] === '>=' ? v >= n : m[1] === '<=' ? v <= n : v === n; } }
+  const t = normTexto(c.txt(e)); return normTexto(q).split(' ').filter(Boolean).every(k => t.includes(k));
+}
 function encFiltradas() {
   if (!ENC || !ENC.carregado) return [];
   const toks = normTexto(ENC_FILTRO.pesq).split(' ').filter(Boolean);
+  const colF = ENC_COLS.filter(c => (ENC_COLF[c.k] || '').trim());
   let l = ENC.encomendas.filter(e => {
     if (ENC_FILTRO.estado === 'em_risco') { if (!e.risco) return false; }
     else if (ENC_FILTRO.estado === 'sem_op') { if (!e.sem_op) return false; }
@@ -351,18 +387,22 @@ function encFiltradas() {
     if (ENC_FILTRO.risco && !e.risco) return false;
     if (ENC_FILTRO.semConc && e.estado === 'concluida') return false;
     if (ENC_FILTRO.unidade && !e.unidades.includes(ENC_FILTRO.unidade)) return false;
-    if (toks.length) {
-      const t = normTexto([e.pedido_item, e.pedido_item.replace('-', '_'), e.n_pedido, e.cliente, e.alias, e.material, e.descricao, e.desc_cliente, e.calibre, e.qualidade, ...Object.values(e.obs || {}), ...e.ordens.map(o => o.op + ' ' + o.unidade + ' ' + (o.maquina || ''))].join(' | '));
+    for (const c of colF) if (!passaColuna(c, e, ENC_COLF[c.k])) return false;
+    if (toks.length) { // pesquisa geral: todas as colunas + OBS do Excel + OPs/máquinas/estados das ordens ligadas
+      const t = normTexto([...ENC_COLS.map(c => c.txt(e)), e.material, ...Object.values(e.obs || {}), ...e.ordens.map(o => [o.op, o.unidade, o.maquina, o.estado_origem, o.pedido].join(' ')), ...(e.ops_obs || [])].join(' | '));
       if (!toks.every(k => t.includes(k))) return false;
     }
     return true;
   });
-  const k = ENC_FILTRO.ordem;
-  const s = (a, b) => String(a ?? '9999').localeCompare(String(b ?? '9999'));
-  if (k === 'fim') l = [...l].sort((a, b) => s(a.fim_previsto || a.fim_real, b.fim_previsto || b.fim_real) || s(a.prazo, b.prazo));
-  else if (k === 'folga') l = [...l].sort((a, b) => (a.folga_dias ?? 1e9) - (b.folga_dias ?? 1e9) || s(a.prazo, b.prazo));
-  else if (k === 'pi') l = [...l].sort((a, b) => a.pedido_item.localeCompare(b.pedido_item));
-  return l;
+  const col = ENC_COLS.find(c => c.k === ENC_ORD.k) || ENC_COLS[4];
+  const cmp = (x, y) => (typeof x === 'number' && typeof y === 'number') ? x - y : String(x).localeCompare(String(y), 'pt', { numeric: true });
+  const prazo = ENC_COLS[4];
+  return [...l].sort((a, b) => {
+    const va = col.val(a), vb = col.val(b);
+    if (va == null && vb == null) return cmp(prazo.val(a) ?? '9999', prazo.val(b) ?? '9999');
+    if (va == null) return 1; if (vb == null) return -1; // vazios sempre no fim
+    return cmp(va, vb) * ENC_ORD.dir || cmp(prazo.val(a) ?? '9999', prazo.val(b) ?? '9999') || a.pedido_item.localeCompare(b.pedido_item);
+  });
 }
 
 function renderEnc() {
@@ -389,14 +429,16 @@ function renderEnc() {
     tile('k-d12', 'Com OP por abrir', T.sem_op, 'alguma ordem ligada sem nº de OP', 'sem_op', T.sem_op > 0),
   ].join('');
   $$('#encKpis .kpi').forEach(el => el.addEventListener('click', () => { ENC_FILTRO.estado = ENC_FILTRO.estado === el.dataset.alvo ? '' : el.dataset.alvo; ENC_TUDO = false; renderEnc(); }));
+  montarCabEnc();
   const lista = encFiltradas();
-  $('#encContagem').textContent = `${lista.length} de ${T.total}`;
+  const nColF = Object.values(ENC_COLF).filter(v => String(v || '').trim()).length;
+  $('#encContagem').textContent = `${lista.length} de ${T.total}${nColF ? ` · ${nColF} filtro${nColF > 1 ? 's' : ''} de coluna` : ''}`;
   const tv = document.body.classList.contains('tv');
   const MAX = tv ? 25 : (ENC_TUDO ? 5000 : 150);
   const linha = e => {
     const aberto = ENC_ABERTOS.has(e.pedido_item);
     const unids = ORDEM_UNID_ENC.filter(u => e.unidades.includes(u)).map(u => chipUnidade(u, e.ordens)).join(' ');
-    const ondeTxt = e.em_processo.length ? `em processo: ${e.em_processo.map(x => x.unidade + (x.maquina ? ' · ' + x.maquina : '')).join(', ')}` : (e.proxima ? `próxima: ${e.proxima.unidade} ${dPT(e.proxima.data_plano)}${e.proxima.hora_plano_ini ? ' ' + e.proxima.hora_plano_ini : ''}` : '');
+    const ondeTxt = encOndeTxt(e);
     const fim = e.estado === 'concluida' ? `<span class="nota">terminou ${dPT(e.fim_real)}</span>` : (e.fim_previsto ? `<b>${diaSem(e.fim_previsto)} ${dPT(e.fim_previsto)}</b>` : (e.n_ordens ? '<span class="nota">sem data</span>' : '—'));
     const cls = e.risco ? 'risco' : (e.estado === 'concluida' ? 'conc' : '');
     let h = `<tr class="enc-l ${cls}" data-pi="${esc(e.pedido_item)}" title="Ver o percurso">
@@ -522,7 +564,6 @@ $('#encFicheiro').addEventListener('change', e => { const f = e.target.files && 
 $('#btnEncCsv').addEventListener('click', exportarCsvEnc);
 $('#encPesq').addEventListener('input', e => { ENC_FILTRO.pesq = e.target.value; renderEnc(); });
 $('#encUnidade').addEventListener('change', e => { ENC_FILTRO.unidade = e.target.value; renderEnc(); });
-$('#encOrdem').addEventListener('change', e => { ENC_FILTRO.ordem = e.target.value; renderEnc(); });
 $('#encRisco').addEventListener('change', e => { ENC_FILTRO.risco = e.target.checked; renderEnc(); });
 $('#encEsconderConc').addEventListener('change', e => { ENC_FILTRO.semConc = e.target.checked; renderEnc(); });
 if (new URLSearchParams(location.search).get('tv') === '1') document.body.classList.add('tv');

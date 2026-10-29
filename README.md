@@ -77,6 +77,7 @@ Responde a "onde está a ser processada cada encomenda e quando termina".
 | Estado | *Sem planeamento* (nenhuma ordem) · *Planeada* (nenhuma começou) · *Em curso* (alguma em processo, ou parte feita) · *Concluída nas apps* (todas as ordens ligadas terminadas). Não inclui expedição/SAP. |
 | Fim previsto | maior fim planeado das ordens ainda activas (VOCUS/DS100: porte do PlannerCork; Densidades/Talis: fim calculado pela app; WIM: só a fase actual). **Folga** = dias corridos entre fim previsto e data prometida (ou desejada, se não houver prometida). |
 | Em risco | prazo já passou e não concluída · fim previsto depois do prazo · sem planeamento com prazo a ≤ 14 dias. |
+| Pesquisa e ordenação | **Procurar em tudo** = todas as colunas + OBS do Excel + OPs/máquinas/estados das ordens ligadas. **Filtro por coluna** (linha por baixo do cabeçalho): palavras sem acentos, todas têm de aparecer; datas aceitam `11/11` ou `2026-11-11` ou `qua`; colunas numéricas (Qt, Folga) aceitam `>100`, `<0`, `>=5`, `=10`. **Ordenar**: clicar no título de qualquer coluna (2.º clique inverte); vazios ficam sempre no fim; desempate pelo prazo. O CSV exporta o que está filtrado, na ordem do ecrã. |
 | Segurança | SheetJS 0.18.5 tem a CVE-2023-30533 (prototype pollution com ficheiro malicioso; corrigida na 0.19.3, que não está no npm). Risco aceite: só lê o Encomendas.xlsx interno, no browser de quem carrega. Trocar por 0.20.x de cdn.sheetjs.com quando a rede o permitir. |
 
 ## Pesquisa global

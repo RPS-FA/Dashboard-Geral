@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark light">
 <script>try{var t=new URLSearchParams(location.search).get("tema")||localStorage.getItem("dg_tema");if(t==="claro"||t==="light")document.documentElement.dataset.theme="light";}catch(e){}</script>
 <title>Dashboard Geral · Urgências CSP1</title>
-<link rel="stylesheet" href="styles.css?v=17">
+<link rel="stylesheet" href="styles.css?v=18">
 </head>
 <body>
 <header class="topo">
@@ -53,19 +53,15 @@
     </div>
     <div class="kpis enc-kpis" id="encKpis"></div>
     <div class="filtro-data enc-filtros">
-      <label class="enc-pesq">Procurar <input type="search" id="encPesq" placeholder="Pedido_Item, cliente, alias, material, OP…"></label>
+      <label class="enc-pesq">Procurar em tudo <input type="search" id="encPesq" placeholder="qualquer coluna, OBS do Excel, OP, máquina…"></label>
       <label>Unidade <select id="encUnidade"><option value="">Todas</option></select></label>
-      <label>Ordenar <select id="encOrdem"><option value="prazo">Prazo (prometida / desejada)</option><option value="fim">Fim previsto</option><option value="folga">Folga (menor primeiro)</option><option value="pi">Pedido_Item</option></select></label>
       <label class="fd-antigas"><input type="checkbox" id="encRisco"> só em risco</label>
       <label class="fd-antigas"><input type="checkbox" id="encEsconderConc"> esconder concluídas</label>
       <span class="nota" id="encContagem"></span>
     </div>
     <div class="tabela-wrap enc-wrap">
       <table id="encTab">
-        <thead><tr>
-          <th>Pedido_Item</th><th>Cliente · alias</th><th>Material</th><th class="num">Qt</th>
-          <th>Prazo</th><th>Estado</th><th>Onde está</th><th>Fim previsto</th><th class="num">Folga</th><th></th>
-        </tr></thead>
+        <thead id="encHead"></thead>
         <tbody id="encBody"></tbody>
       </table>
     </div>
@@ -82,6 +78,6 @@
 
 <div id="detalhe" class="detalhe" hidden><div class="det-caixa" role="dialog" aria-modal="true"><button class="det-fechar" id="detFechar" type="button" aria-label="Fechar">✕</button><div id="detCorpo"></div></div></div>
 <div id="toast" class="toast" hidden></div>
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>
