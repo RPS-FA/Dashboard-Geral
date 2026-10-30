@@ -62,7 +62,8 @@ async function carregar(fonte, http) {
   
     } catch (e) { registosErro.push(`${(o && (o.id ?? o.op)) || "?"}: ${e.message}`); }
   }
-  return { ordens: out, maquinas, erros_registos: registosErro, ts: (r.meta && r.meta.updatedAt) || null, granularidade: 'dia' };
+  return { ordens: out, maquinas, erros_registos: registosErro, ts: (r.meta && r.meta.updatedAt) || null, granularidade: 'dia',
+    bruto: { ops, settings } }; // bruto: entrada do motor (settings null = capacidade por defeito)
 }
 
 module.exports = { carregar };

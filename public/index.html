@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark light">
 <script>try{var t=new URLSearchParams(location.search).get("tema")||localStorage.getItem("dg_tema");if(t==="claro"||t==="light")document.documentElement.dataset.theme="light";}catch(e){}</script>
 <title>Dashboard Geral · Urgências CSP1</title>
-<link rel="stylesheet" href="styles.css?v=18">
+<link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
 <header class="topo">
@@ -30,6 +30,7 @@
 <nav class="vistas" id="vistas" aria-label="Separadores">
   <button type="button" class="vista activo" data-vista="ops">OP por abrir</button>
   <button type="button" class="vista" data-vista="enc">Encomendas <span class="nota">rastreio por Pedido_Item</span></button>
+  <button type="button" class="vista" data-vista="sim">Simulador <span class="nota">cenários · impacto nas encomendas</span></button>
 </nav>
 
 <main id="main" class="a-carregar">
@@ -69,15 +70,46 @@
   </section>
  </div>
 
+  <div id="vistaSim" hidden>
+  <section class="sim-sec" aria-label="Simulador de cenários">
+    <div class="sec-cab"><h2>Simulador</h2><span class="nota">cenários com os motores de planeamento das apps (cópias fiéis, validadas contra cada app) · <b>nada é gravado nas apps</b></span></div>
+    <div class="sim-grid">
+      <div class="sim-painel">
+        <div class="sim-bloco">
+          <h3>1 · Ordem</h3>
+          <input type="search" id="simQ" autocomplete="off" placeholder="OP, lote, pedido, cliente… (WIM, VOCUS, DS100, Densidades, DSL, DSL Talis)">
+          <div id="simRes" class="sim-lista"></div>
+          <div id="simSel"></div>
+        </div>
+        <div class="sim-bloco">
+          <h3>2 · Alteração</h3>
+          <div class="sim-tipos" id="simTipos">
+            <button type="button" data-tipo="qtd">Quantidade</button><button type="button" data-tipo="mover">Mover / antecipar</button><button type="button" data-tipo="inicio">Forçar início</button><button type="button" data-tipo="capacidade">Capacidade</button>
+          </div>
+          <div id="simForm" class="sim-form"></div>
+          <button type="button" id="simAdd" class="btn">+ Adicionar ao cenário</button>
+        </div>
+        <div class="sim-bloco">
+          <h3>3 · Cenário <span class="nota" id="simN"></span></h3>
+          <ol id="simAlts" class="sim-alts"></ol>
+          <div class="sim-acoes"><button type="button" id="simCorrer" class="btn btn-pri">▶ Simular</button><button type="button" id="simLimpar" class="btn btn-sec">Limpar cenário</button></div>
+        </div>
+      </div>
+      <div class="sim-saida" id="simSaida"><div class="sim-vazio">Escolhe uma ordem (ou uma máquina, em Capacidade), define a alteração, junta-a ao cenário e carrega em <b>Simular</b>.<br>O resultado mostra as ordens que mudam de data, o Gantt antes/depois das máquinas afectadas e as encomendas (Pedido_Item) cujo fim previsto muda — e se passam a estar em risco.</div></div>
+    </div>
+  </section>
+ </div>
+
   <footer class="rodape">
     <p><strong>Regras.</strong> <em>OP por abrir</em> = ordem activa (não terminada, não manutenção) cujo campo OP não tem um número de OP de 8 dígitos (1xxxxxxx, isolado — "AG OP - 150XXX", "1800XXXX", lotes "LT…" e pedidos "4400…" não contam). Filtro por dia planeado, em <em>dias úteis</em> (2.ª–6.ª, sem feriados nacionais nem o municipal de Santa Maria da Feira, 20/1): <em>D</em> = hoje — um plano ao sábado, domingo ou feriado conta no último dia útil antes (cartão vermelho); <em>D+1</em> / <em>D+2</em> = próximo dia útil / o seguinte — amarelos; <em>até D+3</em> (defeito). As ordens com plano anterior a hoje nunca entram nos filtros D: só em <em>Todas</em>, <em>Personalizado</em> ou no indicador <em>Antigas</em>. <em>Ignorar antigas</em> tira-as também de Todas e das contagens. Ordenação pelo dia planeado. VOCUS: dia e hora de início programados pelo PlannerCork (fila por máquina, cadência × OEE, paragens, setup). DS100: 1.º dia com frascos nas colunas diárias do separador DS100 do PlannerCork (capacidade diária, transbordo para a semana seguinte); só as ordens em KANBAN contam a segunda-feira da semana.
-    <em>Encomendas</em>: Pedido_Item do Encomendas.xlsx (folhas "Encomendas…" e "Acompanhamentos") ligado às ordens das apps pelo campo pedido (VOCUS, DS100, Densidades, DSL Talis) <em>e</em> pelas OPs de 8 dígitos citadas nas colunas OBS do Excel (WIM, DSL, PureCork…). Fim previsto = maior fim planeado das ordens ainda activas; folga = dias corridos entre o fim previsto e a data prometida (ou desejada). WIM só conhece a fase actual; o dashboard não vê expedição nem SAP.
+    <em>Encomendas</em>: Pedido_Item do Encomendas.xlsx (folhas "Encomendas…" e "Acompanhamentos") ligado às ordens das apps pelo campo pedido (VOCUS, DS100, Densidades, DSL Talis) <em>e</em> pelas OPs de 8 dígitos citadas nas colunas OBS do Excel (WIM, DSL, PureCork…). Fim previsto = maior fim planeado das ordens ainda activas, calculado com os motores de cada app (WIM inclui Wash, Innocork e o dia de Make-up); folga = dias corridos entre o fim previsto e a data prometida (ou desejada). O dashboard não vê expedição nem SAP.
+    <em>Simulador</em>: as alterações correm sobre uma cópia dos dados lidos, com os motores portados das apps (Densidades, DSL, DSL Talis, WIM, VOCUS, DS100 — PureCork fica de fora); cada secção é recalculada como a própria app faria. Não há propagação entre secções (a app de uma secção não conhece as outras): o efeito noutras secções vê-se nas encomendas ligadas. WIM Make-up só tem dia (fim da Lavação + 1 dia útil); DS100 planeia por capacidade diária (sem hora).
     Ciclo das ordens: Em espera (Kanban/Buffer) → Aberto → Liberada → Na linha ("Entregue Logística") → Em processo → Terminada → Espera JOB → Fechada. PureCork não regista execução (só LOTE FINAL e CONTADO). DSL Talis só devolve o mês actual e o anterior. Fuso: Europe/Lisbon. O dashboard só lê as apps — não altera nada.</p>
   </footer>
 </main>
 
 <div id="detalhe" class="detalhe" hidden><div class="det-caixa" role="dialog" aria-modal="true"><button class="det-fechar" id="detFechar" type="button" aria-label="Fechar">✕</button><div id="detCorpo"></div></div></div>
 <div id="toast" class="toast" hidden></div>
-<script src="app.js?v=18"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>

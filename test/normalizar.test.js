@@ -236,3 +236,84 @@ process.env.TZ = 'Europe/Lisbon';
   EN._definir(null);
   console.log('OK — encomendas');
 }
+
+// ------------------------------------------------------------
+// Motores portados + simulador (dados sintéticos; a fidelidade às apps foi validada no browser contra cada app)
+// ------------------------------------------------------------
+{
+  const D = require('../src/motores/densidades');
+  const ops = [
+    { id: 1, maquina: 'Maq 1 - Linha 9', weekKey: '2026-W45', diaIdx: 0, sortIdx: 0, qtdEntrada: 14600 },
+    { id: 2, maquina: 'Maq 1 - Linha 9', weekKey: '2026-W45', diaIdx: 0, sortIdx: 1, qtdEntrada: 29200 },
+    { id: 3, maquina: 'KANBAN', qtdEntrada: 1000 },
+  ];
+  const p = D.calcularPlano(ops, {});
+  const hm = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  assert.strictEqual(p.size, 2, 'KANBAN não é escalonado');
+  assert.strictEqual(hm(p.get(1).inicio), '08:00'); assert.strictEqual(hm(p.get(1).fim), '09:00');
+  assert.strictEqual(hm(p.get(2).inicio), '09:10', 'setup 10 min'); assert.strictEqual(hm(p.get(2).fim), '11:10');
+  // turno 08–17: 10 h de trabalho a partir das 08:00 transbordam para o dia seguinte (2 segmentos)
+  const q = D.calcularPlano([{ id: 9, maquina: 'Maq 1 - Linha 9', weekKey: '2026-W45', diaIdx: 0, sortIdx: 0, qtdEntrada: 146000 }], {});
+  assert.strictEqual(q.get(9).segs.length, 2); assert.strictEqual(q.get(9).fim.getDate(), 3); assert.strictEqual(hm(q.get(9).fim), '09:00');
+
+  const T = require('../src/motores/talis');
+  const cfg = { capacidade: { EE1: 9000, EE2: 9000, EM: 6000 }, setupMin: 15, turno: { inicio: '08:00', fim: '17:00', almocoIni: '12:00', almocoFim: '13:00' }, ancora: '2026-09-01T08:00:00Z', paragens: [{ data: '2026-11-03' }], excecoes: [] };
+  const pt = T.calcularPlano([{ id: 'a', linha: 'EE1', qtd: 36000, ordem: 0, dia_fixo: '2026-11-02' }, { id: 'b', linha: 'EE1', qtd: 36000, ordem: 1 }], cfg);
+  assert.strictEqual(pt.get('a').inicio.toISOString(), '2026-11-02T08:00:00.000Z');
+  assert.strictEqual(pt.get('b').inicio.toISOString(), '2026-11-02T13:00:00.000Z', 'setup cai no almoço → 13:00');
+  assert.strictEqual(pt.get('b').fim.toISOString(), '2026-11-02T17:00:00.000Z');
+
+  const L = require('../src/motores/dsl');
+  const pl = L.calcularPlano([{ id: 'x', linha: '1', weekKey: '2026-W45', diaIdx: 0, qtd: 17, sortIdx: 0 }], { setupMin: 10, capacidades: { 1: { krH: 17000 } } });
+  assert.strictEqual(hm(pl.get('x').inicio), '08:00'); assert.strictEqual(hm(pl.get('x').fim), '09:00', '17 milheiros a 17000/h = 1 h');
+
+  const W = require('../src/motores/wim');
+  const S = { sections: { W: { maqs: ['Maq 1'] }, I: { maqs: ['INNOCORK'] }, M: { maqs: ['Maquina 1'] } }, washCycle: { L03: 90 } };
+  const pw = W.calcularPlano([{ id: 7, temW: true, temM: true, qtd: 40000, lavacao: 'L03', w_maq: 'Maq 1', w_wk: '2026-W45', w_dia: 0, w_sort: 0 }], S);
+  assert.strictEqual(hm(pw.get('7|W').inicio), '06:00'); assert.strictEqual(hm(pw.get('7|W').fim), '07:30', '1 batch L03 = 90 min');
+  assert.ok(pw.get('7|M').so_dia, 'Make-up sem máquina atribuída = só dia'); assert.strictEqual(pw.get('7|M').inicio.getDate(), 3, 'Make-up = Lavação + 1 dia útil');
+  console.log('OK — motores');
+}
+{
+  const S = require('../src/simulador');
+  const EN = require('../src/encomendas');
+  const brutos = {
+    densidades: { ops: [
+      { id: 1, maquina: 'Maq 1 - Linha 9', weekKey: '2026-W45', diaIdx: 0, sortIdx: 0, qtdEntrada: 14600, op: '15000001' },
+      { id: 2, maquina: 'Maq 1 - Linha 9', weekKey: '2026-W45', diaIdx: 0, sortIdx: 1, qtdEntrada: 29200, op: '15000002' },
+    ], settings: {} },
+  };
+  const ordens = [
+    { id: 'densidades-1', fonte: 'densidades', unidade: 'DENSIDADES', op: '15000001', terminal: false, estado: 'liberada' },
+    { id: 'densidades-2', fonte: 'densidades', unidade: 'DENSIDADES', op: '15000002', pedido: '4400000009-10', terminal: false, estado: 'liberada', data_plano: '2026-11-02' },
+  ];
+  const copia = JSON.stringify(brutos);
+  // quantidade da 1.ª empurra a 2.ª 60 min
+  let r = S.simular([{ fonte: 'densidades', tipo: 'qtd', ordem: 'densidades-1', valor: 29200 }], { brutos, ordens, encomendas: null, hoje: '2026-10-29' });
+  assert.ok(r.alteracoes[0].ok);
+  const o2 = r.ordens.find(x => x.id === 'densidades-2'); assert.strictEqual(o2.delta_ini_min, 60); assert.strictEqual(o2.delta_fim_min, 60);
+  assert.strictEqual(JSON.stringify(brutos), copia, 'o simulador não altera os dados lidos');
+  // mover a 2.ª para antes da 1.ª
+  r = S.simular([{ fonte: 'densidades', tipo: 'mover', ordem: 'densidades-2', antes_de: 'densidades-1' }], { brutos, ordens, hoje: '2026-10-29' });
+  assert.strictEqual(r.ordens.find(x => x.id === 'densidades-2').ini_depois, '2026-11-02T08:00');
+  assert.strictEqual(r.ordens.find(x => x.id === 'densidades-1').ini_depois, '2026-11-02T10:10');
+  // forçar início
+  r = S.simular([{ fonte: 'densidades', tipo: 'inicio', ordem: 'densidades-1', data: '2026-11-04', hora: '10:00' }], { brutos, ordens, hoje: '2026-10-29' });
+  assert.strictEqual(r.ordens.find(x => x.id === 'densidades-1').ini_depois, '2026-11-04T10:00');
+  // capacidade: paragem da máquina no dia 2 -> tudo passa para dia 3; encomenda com prazo 2/11 entra em risco
+  EN._definir({ ficheiro: 't.xlsx', linhas: [{ pedido_item: '4400000009-10', data_prometida: '2026-11-02', obs: {}, folhas: ['Encomendas HOJE'] }], carregado_em: '2026-10-29T10:00:00Z' });
+  const enc = EN.cruzar(ordens, '2026-10-29', { barras: S.barrasPorOrdem(brutos) });
+  assert.strictEqual(enc.encomendas[0].fim_previsto, '2026-11-02'); assert.strictEqual(enc.encomendas[0].fim_previsto_hora, '11:10', 'fim previsto pelas barras do motor');
+  r = S.simular([{ fonte: 'densidades', tipo: 'capacidade', modo: 'paragem', maquina: 'Maq 1 - Linha 9', de: '2026-11-02', ate: '2026-11-02' }], { brutos, ordens, encomendas: enc, hoje: '2026-10-29' });
+  assert.ok(r.alteracoes[0].ok, r.alteracoes[0].erro);
+  assert.strictEqual(r.encomendas.length, 1); assert.strictEqual(r.encomendas[0].risco_antes, null); assert.strictEqual(r.encomendas[0].risco_depois, 'fim_depois_do_prazo');
+  assert.strictEqual(r.resumo.novas_em_risco, 1); assert.ok(r.gantt && r.gantt.lanes.length === 1);
+  // ritmo a 50 % duplica a duração
+  r = S.simular([{ fonte: 'densidades', tipo: 'capacidade', modo: 'ritmo', maquina: 'Maq 1 - Linha 9', pct: 50 }], { brutos, ordens, hoje: '2026-10-29' });
+  assert.strictEqual(r.ordens.find(x => x.id === 'densidades-1').fim_depois, '2026-11-02T10:00');
+  // erros controlados
+  r = S.simular([{ fonte: 'purecork', tipo: 'qtd', ordem: 'purecork-1', valor: 1 }, { fonte: 'densidades', tipo: 'qtd', ordem: 'densidades-99', valor: 1 }], { brutos, ordens, hoje: '2026-10-29' });
+  assert.ok(!r.alteracoes[0].ok && !r.alteracoes[1].ok); assert.strictEqual(r.ordens.length, 0);
+  EN._definir(null);
+  console.log('OK — simulador');
+}

@@ -208,7 +208,7 @@ main.a-carregar section { visibility: hidden; }
 .rodape { color: var(--ink-3); font-size: 12px; margin-top: 18px; line-height: 1.5; }
 .rodape em { font-style: normal; color: var(--ink-2); font-weight: 600; }
 
-.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #000; padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 50; }
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--plano); padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 50; }
 
 /* ---- modo TV (ecrã fixo: KPIs + OPs por abrir mais próximas) ---- */
 body.tv .rodape, body.tv .topo-dir #btnAtualizar, body.tv #btnCsvOps, body.tv .ops-sec .chips, body.tv .fd-custom, body.tv .fd-antigas { display: none; }
@@ -297,3 +297,116 @@ body.tv #encTab { font-size: 14px; }
 #encTab thead tr.filtros-col th.num input { text-align: right; }
 #encTab thead tr.filtros-col .btn { padding: 1px 7px; font-size: 11px; }
 body.tv #encTab thead tr.filtros-col { display: none; }
+
+/* ============================================================
+   Gantt (motores das apps) · cores por unidade (categóricas, fixas nos dois temas)
+   ============================================================ */
+:root { --u-wim: #3987e5; --u-dsl: #22a99a; --u-talis: #9073e6; --u-dens: #d99a1e; --u-vocus: #e0679f; --u-ds100: #5eb83a; --u-pure: #8f8d87; --g-fds: rgba(255,255,255,.035); --g-antes: #4a4945; }
+:root[data-theme="light"] { --u-wim: #2a78d6; --u-dsl: #13897d; --u-talis: #7556d6; --u-dens: #c98a00; --u-vocus: #c94d86; --u-ds100: #3f9a1e; --u-pure: #898781; --g-fds: rgba(0,0,0,.035); --g-antes: #c9c8c1; }
+.u-wim { --u: var(--u-wim); } .u-dsl { --u: var(--u-dsl); } .u-talis { --u: var(--u-talis); } .u-dens { --u: var(--u-dens); } .u-vocus { --u: var(--u-vocus); } .u-ds100 { --u: var(--u-ds100); } .u-pure { --u: var(--u-pure); }
+.uchip.cor { background: transparent; color: var(--u, var(--ink-2)); border-color: var(--u, var(--borda)); cursor: default; }
+
+/* mini-Gantt na tabela de encomendas */
+#encTab th.mg-th { min-width: 230px; }
+.mg-eixo { position: relative; height: 13px; margin-top: 3px; font-size: 9.5px; font-weight: 500; color: var(--ink-3); }
+.mg-eixo span { position: absolute; top: 0; transform: translateX(1px); border-left: 1px solid var(--linha); padding-left: 2px; line-height: 13px; }
+.mg-eixo .mg-hoje { top: 0; height: 13px; }
+#encTab td.mg-td { padding: 6px 10px; vertical-align: middle; }
+.mg { position: relative; width: 230px; height: 20px; background: var(--plano); border: 1px solid var(--linha); border-radius: 4px; overflow: hidden; }
+.mg.vazio .mg-txt { position: absolute; left: 6px; top: 2px; font-size: 10.5px; color: var(--ink-3); }
+.mg-b { position: absolute; display: block; background: var(--u, var(--ink-3)); border-radius: 2px; min-width: 2px; }
+.mg-b.feito { opacity: .35; }
+.mg-b.proc { box-shadow: 0 0 0 1px var(--em-processo); }
+.mg-b.so-dia { background: repeating-linear-gradient(90deg, var(--u, var(--ink-3)) 0 3px, transparent 3px 5px); }
+.mg-hoje { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--realce); }
+.mg-prazo { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--critico); }
+.mg-prazo.fora-i { left: 0; } .mg-prazo.fora-f { right: 0; left: auto; }
+.mg-seta { position: absolute; top: 0; font-size: 13px; line-height: 18px; color: var(--ink-2); font-weight: 700; }
+.mg-seta.i { left: 2px; } .mg-seta.f { right: 3px; }
+
+/* Gantt detalhado */
+.gantt { border: 1px solid var(--linha); border-radius: 8px; background: var(--superficie); overflow: hidden; font-size: 11.5px; }
+.g-lin { display: grid; grid-template-columns: minmax(170px, 260px) 1fr; border-bottom: 1px solid var(--linha); min-height: 24px; }
+.g-lin:last-child { border-bottom: 0; }
+.g-rot { padding: 4px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--linha); display: flex; align-items: center; gap: 4px; }
+.g-pista { position: relative; min-height: 24px; }
+.g-cab { background: var(--plano); }
+.g-eixo { height: 24px; }
+.g-tick { position: absolute; top: 0; bottom: 0; padding: 5px 0 0 3px; border-left: 1px solid var(--linha); color: var(--ink-3); font-size: 10px; white-space: nowrap; }
+.g-fds { position: absolute; top: 0; bottom: 0; background: var(--g-fds); }
+.g-marca { position: absolute; top: 0; bottom: 0; width: 0; z-index: 2; }
+.g-marca.hoje { border-left: 1.5px dashed var(--realce); }
+.g-marca.prazo { border-left: 2px solid var(--critico); }
+.g-b { position: absolute; top: 4px; height: 16px; border-radius: 3px; background: var(--u, var(--ink-3)); color: #fff; overflow: hidden; white-space: nowrap; z-index: 1; box-sizing: border-box; min-width: 3px; }
+.g-b em { font-style: normal; font-size: 10.5px; padding: 0 4px; line-height: 16px; position: relative; z-index: 1; text-shadow: 0 0 2px rgba(0,0,0,.6); }
+.g-b.dividida { background: color-mix(in srgb, var(--u, #888) 28%, transparent); }
+.g-seg { position: absolute; top: 0; bottom: 0; background: var(--u, var(--ink-3)); }
+.g-b.so-dia { background: repeating-linear-gradient(45deg, var(--u, #888) 0 5px, color-mix(in srgb, var(--u, #888) 45%, transparent) 5px 9px); }
+.g-b.feito { opacity: .4; }
+.g-b.proc { box-shadow: 0 0 0 2px var(--em-processo); }
+.g-b.antes { background: var(--g-antes); color: var(--ink); }
+.g-b.antes em { text-shadow: none; }
+.g-b.antes .g-seg { background: var(--g-antes); }
+.g-b.mudou { outline: 2px solid var(--ink); outline-offset: -1px; }
+.g-b.corta-i { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.g-b.corta-f { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.g-lin.feito .g-rot { color: var(--ink-3); }
+.g-lin.g-antes { border-bottom: 0; }
+.g-lin.g-antes .g-pista, .g-lin.g-depois .g-pista { min-height: 22px; }
+.g-rot-dep { color: var(--ink-3); padding-left: 64px; }
+.enc-gantt { margin-bottom: 10px; }
+
+/* ============================================================
+   Simulador
+   ============================================================ */
+.sim-sec { margin-bottom: 22px; }
+.sim-grid { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 16px; align-items: start; }
+.sim-painel { display: grid; gap: 12px; position: sticky; top: 76px; }
+.sim-bloco { background: var(--superficie); border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; box-shadow: var(--sombra); display: grid; gap: 8px; }
+.sim-bloco h3 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+.sim-bloco input[type=search], .sim-bloco input[type=number], .sim-bloco input[type=date], .sim-bloco input[type=time], .sim-bloco select { background: var(--plano); border: 1px solid var(--borda); border-radius: 6px; padding: 5px 8px; width: 100%; }
+.sim-form { display: grid; gap: 8px; }
+.sim-form label { display: grid; gap: 3px; font-size: 12px; color: var(--ink-2); }
+.sim-form .sf-dia, .sim-form .sf-paragem { display: grid; gap: 8px; }
+.sim-form .sf-paragem { grid-template-columns: 1fr 1fr; }
+.sim-radio { display: flex; gap: 14px; font-size: 12.5px; }
+.sim-radio label { display: inline-flex !important; gap: 5px; align-items: center; color: var(--ink) !important; }
+.sim-radio input { width: auto !important; }
+.sim-tipos { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.sim-tipos button { background: var(--plano); border: 1px solid var(--borda); border-radius: 6px; padding: 6px 4px; cursor: pointer; font-size: 12.5px; color: var(--ink-2); }
+.sim-tipos button.activo { border-color: var(--realce); color: var(--ink); box-shadow: inset 0 0 0 1px var(--realce); font-weight: 600; }
+.sim-lista { display: grid; gap: 2px; max-height: 260px; overflow: auto; }
+.sim-lista:empty { display: none; }
+.sim-item { padding: 6px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; font-size: 12.5px; }
+.sim-item:hover { border-color: var(--realce); background: var(--plano); }
+.sim-item.feito { opacity: .6; }
+.sim-escolhida { border: 1px solid var(--realce); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; background: var(--plano); }
+.sim-escolhida a { float: right; text-decoration: none; color: var(--ink-3); }
+.sim-alts { margin: 0; padding-left: 20px; display: grid; gap: 5px; font-size: 12.5px; }
+.sim-alts li a { text-decoration: none; color: var(--ink-3); margin-left: 6px; }
+.sim-alts li.ok::marker { color: var(--bom); }
+.sim-alts li.erro::marker { color: var(--critico); }
+.sim-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-pri { background: var(--realce); border-color: var(--realce); color: #fff; font-weight: 600; }
+.btn-pri:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.sim-saida { min-width: 0; display: grid; gap: 10px; align-content: start; transition: opacity .2s; }
+.sim-saida.a-actualizar { opacity: .45; pointer-events: none; }
+.sim-vazio { background: var(--superficie); border: 1px dashed var(--borda); border-radius: 12px; padding: 22px; color: var(--ink-2); line-height: 1.6; }
+.sim-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 0; }
+.sim-kpis .kpi { cursor: default; min-height: 84px; padding: 10px 14px; }
+.sim-kpis .kpi .val { font-size: 32px; }
+.sim-h { margin: 8px 0 0; font-size: 14px; }
+.sim-tab { border-collapse: collapse; width: 100%; font-size: 12.5px; background: var(--superficie); }
+.sim-tab th, .sim-tab td { padding: 6px 10px; border-bottom: 1px solid var(--linha); text-align: left; white-space: nowrap; vertical-align: top; }
+.sim-tab th { color: var(--ink-3); font-weight: 600; font-size: 11.5px; position: sticky; top: 0; background: var(--superficie); }
+.sim-tab td.num, .sim-tab th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.sim-tab tr.risco td:first-child { box-shadow: inset 4px 0 0 var(--critico); }
+.sim-tab tr.melhora td:first-child { box-shadow: inset 4px 0 0 var(--bom); }
+.sim-tab tr.alterada td { background: var(--plano); }
+.sim-tab tr.feito td { color: var(--ink-3); }
+.bom { color: var(--bom-ink); }
+.sim-saida .tabela-wrap { max-height: 420px; overflow: auto; border: 1px solid var(--borda); border-radius: 10px; }
+@media (max-width: 980px) { .sim-grid { grid-template-columns: 1fr; } .sim-painel { position: static; } .g-lin { grid-template-columns: 130px 1fr; } }
+body.tv .vistas [data-vista="sim"] { display: none; }
+.sim-form [hidden], .sim-bloco [hidden] { display: none !important; }

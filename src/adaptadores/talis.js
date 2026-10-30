@@ -15,7 +15,8 @@ function mesesAConsultar() {
   const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
   return [prev, `${y}-${String(m).padStart(2, '0')}`];
 }
-function hora(iso) { const l = U.isoParaLocal(iso); return l && l.length > 10 ? l.slice(11, 16) : null; }
+// A app guarda datas em UTC usado como hora de parede ("08:00Z" = 08:00 na fábrica): ler a hora tal como está, sem converter fuso.
+function hora(iso) { const m = /T(\d{2}:\d{2})/.exec(String(iso || '')); return m ? m[1] : null; }
 
 async function carregar(fonte, http) {
   const meses = mesesAConsultar();
@@ -68,7 +69,8 @@ async function carregar(fonte, http) {
   
     } catch (e) { registosErro.push(`${(o && (o.id ?? o.op)) || "?"}: ${e.message}`); }
   }
-  return { ordens: out, maquinas, erros_registos: registosErro, ts: ok[ok.length - 1].rev || null, granularidade: 'dia' };
+  return { ordens: out, maquinas, erros_registos: registosErro, ts: ok[ok.length - 1].rev || null, granularidade: 'dia',
+    bruto: { ops: [...mapa.values()], config: ultimo.config || {} } }; // bruto: entrada do motor (config já vem fundida com CONFIG_DEFAULT)
 }
 
 module.exports = { carregar };

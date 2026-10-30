@@ -101,8 +101,14 @@ function indexar(ordens) {
   return { porPI, porOP };
 }
 
-function resumoOrdem(o, via) {
+function resumoOrdem(o, via, barras) {
+  // barras = plano dos motores portados (Gantt): WIM traz uma barra por fase (Wash, Innocork, Make-up)
+  const bs = (barras && barras.get(o.id)) || [];
+  const plano_ini = bs.length ? bs.map(x => x.ini).filter(Boolean).sort()[0] || null : null;
+  const ult = bs.filter(x => x.fim).sort((x, y) => String(x.fim).localeCompare(String(y.fim))).pop() || null;
+  const plano_fim = ult ? ult.fim : null;
   return {
+    barras: bs, plano_ini, plano_fim, plano_fim_so_dia: !!(ult && ult.so_dia),
     id: o.id, unidade: o.unidade, op: o.op || o.ref || '', op_num: o.op_num || null, sem_op: !!o.sem_op, via,
     maquina: o.maquina || null, fase: o.fase || null, estado: o.estado, estado_origem: o.estado_origem, terminal: !!o.terminal, em_curso: !!o.em_curso,
     data_plano: o.data_plano || null, hora_plano_ini: o.hora_plano_ini || null, data_fim_plano: o.data_fim_plano || null, hora_plano_fim: o.hora_plano_fim || null,
@@ -112,9 +118,14 @@ function resumoOrdem(o, via) {
   };
 }
 
-/** Cruza as encomendas carregadas com as ordens actuais dos planeamentos. */
-function cruzar(ordens, hoje) {
+/**
+ * Cruza as encomendas carregadas com as ordens actuais dos planeamentos.
+ * opts.barras (Map id -> barras dos motores): quando existe, o fim previsto de cada ordem é o fim da última
+ * barra (inclui todas as fases WIM); sem barras usa data_fim_plano da app.
+ */
+function cruzar(ordens, hoje, opts) {
   if (!ESTADO) return null;
+  const barras = (opts && opts.barras) || null;
   const { porPI, porOP } = indexar(ordens || []);
   const out = [];
   for (const e of ESTADO.linhas) {
@@ -123,15 +134,17 @@ function cruzar(ordens, hoje) {
     const opsObs = new Set(); for (const v of Object.values(e.obs || {})) for (const n of opsEm(v)) opsObs.add(n);
     const opsNaoEncontradas = [];
     for (const n of opsObs) { const s = porOP.get(n); if (!s) { opsNaoEncontradas.push(n); continue; } for (const o of s) { const x = ligadas.get(o.id) || { o, via: new Set() }; x.via.add('obs'); ligadas.set(o.id, x); } }
-    const ords = [...ligadas.values()].map(x => resumoOrdem(x.o, [...x.via].sort().join('+')))
+    const ords = [...ligadas.values()].map(x => resumoOrdem(x.o, [...x.via].sort().join('+'), barras))
       .sort((a, b) => String(a.data_plano || a.real_inicio || '9999').localeCompare(String(b.data_plano || b.real_inicio || '9999')) || a.unidade.localeCompare(b.unidade));
     const activas = ords.filter(o => !o.terminal);
     const emProc = ords.filter(o => o.em_curso);
     let est = 'sem_plano';
     if (ords.length) est = !activas.length ? 'concluida' : ((emProc.length || activas.length < ords.length) ? 'em_curso' : 'planeada');
-    const fimDe = o => o.data_fim_plano || o.data_plano || null;
+    const fimDe = o => (o.plano_fim ? o.plano_fim.slice(0, 10) : null) || o.data_fim_plano || o.data_plano || null;
     const fimsActivas = activas.map(fimDe).filter(Boolean).sort();
     const fim_previsto = est === 'concluida' ? null : (fimsActivas[fimsActivas.length - 1] || null);
+    const ultAct = activas.filter(o => o.plano_fim).sort((x, y) => x.plano_fim.localeCompare(y.plano_fim)).pop();
+    const fim_previsto_hora = fim_previsto && ultAct && !ultAct.plano_fim_so_dia && ultAct.plano_fim.slice(0, 10) === fim_previsto ? ultAct.plano_fim.slice(11, 16) : null; // "só dia" (DS100, Make-up) não tem hora
     const fimsReais = ords.map(o => (o.real_fim || '').slice(0, 10) || fimDe(o)).filter(Boolean).sort();
     const fim_real = est === 'concluida' ? (fimsReais[fimsReais.length - 1] || null) : null;
     const prazo = e.data_prometida || e.data_desejada || null;
@@ -147,7 +160,7 @@ function cruzar(ordens, hoje) {
       ...e, estado: est, estado_label: ESTADOS_ENC[est], ordens: ords, n_ordens: ords.length, n_activas: activas.length,
       unidades: [...new Set(ords.map(o => o.unidade))], onde, em_processo: emProc.map(o => ({ unidade: o.unidade, op: o.op, maquina: o.maquina })),
       proxima: proxima ? { unidade: proxima.unidade, op: proxima.op, data_plano: proxima.data_plano, hora_plano_ini: proxima.hora_plano_ini } : null,
-      fim_previsto, fim_real, prazo, prazo_tipo: e.data_prometida ? 'prometida' : (e.data_desejada ? 'desejada' : null), folga_dias: folga, risco,
+      fim_previsto, fim_previsto_hora, fim_real, prazo, prazo_tipo: e.data_prometida ? 'prometida' : (e.data_desejada ? 'desejada' : null), folga_dias: folga, risco,
       ops_obs: [...opsObs], ops_obs_nao_encontradas: opsNaoEncontradas,
       sem_op: ords.some(o => !o.terminal && o.sem_op),
     });

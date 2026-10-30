@@ -59,6 +59,7 @@ async function lerFonte(fonte) {
   try {
     const r = await ADAPTADORES[fonte.adaptador].carregar(fonte, httpJson);
     c.ordens = r.ordens; c.maquinas = r.maquinas || []; c.granularidade = r.granularidade || 'dia';
+    c.bruto = r.bruto || null; // dados tal como a app os devolve (entrada dos motores do simulador; nunca exposto em bruto)
     c.ok = true; c.erro = null; c.ultima_ok = c.ultima_tentativa; c.n = r.ordens.length; c.ts_fonte = r.ts || null;
     c.registos_erro = Array.isArray(r.erros_registos) ? r.erros_registos.slice(0, 20) : [];
     if (c.registos_erro.length) console.warn(`[agregador] ${fonte.id}: ${c.registos_erro.length} registo(s) ignorado(s) por dados inesperados — ${c.registos_erro.slice(0, 3).join(' | ')}`);
@@ -126,4 +127,11 @@ function iniciar() {
   setInterval(() => actualizar().catch(e => console.error('[agregador]', e.message)), REFRESH_SEC * 1000);
 }
 
-module.exports = { iniciar, actualizar, resumo, REFRESH_SEC, FONTES };
+/** Dados em bruto da última leitura boa de cada fonte (entrada dos motores do simulador). Só leitura. */
+function brutos() {
+  const out = {};
+  for (const f of FONTES) { const c = cache[f.id]; if (c && c.bruto) out[f.id] = c.bruto; }
+  return out;
+}
+
+module.exports = { iniciar, actualizar, resumo, brutos, REFRESH_SEC, FONTES };

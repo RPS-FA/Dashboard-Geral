@@ -4,6 +4,8 @@ Dashboard de leitura que agrega as 6 apps de planeamento do CSP1 (7 unidades) e 
 
 1. **OP por abrir** — ordens activas cujo campo OP ainda não tem o número de OP (8 dígitos), em cartões ordenados pelo dia planeado, com filtros rápidos Hoje / até D+1 / até D+2 / até D+3 / personalizado / todas e opção de ignorar antigas (hoje vermelho, D+1 e D+2 amarelo).
 2. **Pesquisa global** — qualquer item em todos os planeamentos (activos e fechados), com detalhe da ordem.
+3. **Encomendas** — rastreio por Pedido_Item (Encomendas.xlsx), com **mini-Gantt** por linha e Gantt detalhado por encomenda.
+4. **Simulador** — cenários (quantidade, mover/antecipar, forçar início, capacidade) recalculados com os **motores das próprias apps** e impacto nas encomendas. Nada é gravado nas apps.
 
 O painel de excepções "Atenção" (v3–v7) foi retirado do ecrã a pedido (28/10); a API `/api/resumo` continua a devolver `alertas` (regras em `src/indicadores.js alertas()`), sem UI.
 
@@ -75,10 +77,40 @@ Responde a "onde está a ser processada cada encomenda e quando termina".
 | Protecção | opcional: variável `UPLOAD_TOKEN` no Railway → o carregamento pede o código (guardado no browser). Sem ela, qualquer pessoa com o link pode substituir o ficheiro. |
 | Ligação às ordens | **(1) pedido** — o Pedido_Item (`4400041825_30` = `4400041825-30`) aparece no campo pedido/OP/lote/obs da ordem na app (VOCUS, DS100, Densidades, DSL Talis registam-no; WIM e DSL quase nunca; PureCork não tem o campo). **(2) OBS do Excel** — as colunas OBS/OBS AS/OBS FS citam OPs de 8 dígitos ("LAV 12063175", "DSL 14400252", "PC 11402913") → ligadas pelo número de OP. Ao vivo a 29/10: 163 de 253 Pedido_Item ligados (93 pelas duas vias, 40 só pedido, 30 só OBS); 90 sem nenhuma ordem nas apps. |
 | Estado | *Sem planeamento* (nenhuma ordem) · *Planeada* (nenhuma começou) · *Em curso* (alguma em processo, ou parte feita) · *Concluída nas apps* (todas as ordens ligadas terminadas). Não inclui expedição/SAP. |
-| Fim previsto | maior fim planeado das ordens ainda activas (VOCUS/DS100: porte do PlannerCork; Densidades/Talis: fim calculado pela app; WIM: só a fase actual). **Folga** = dias corridos entre fim previsto e data prometida (ou desejada, se não houver prometida). |
+| Fim previsto | maior fim das **barras dos motores** (ver "Motores portados") das ordens ainda activas — WIM inclui Wash, Innocork e o dia de Make-up; DS100 e Make-up só têm dia (sem hora). Ordem sem barra (PureCork, Kanban/Buffer) usa a data da app. **Folga** = dias corridos entre fim previsto e data prometida (ou desejada, se não houver prometida). |
+| Mini-Gantt | coluna **Plano**: escala comum de 1 semana atrás a 7 semanas à frente (S = semana ISO); uma barra por ordem/fase, cor por unidade; linha azul tracejada = hoje, linha vermelha = prazo; ‹ › = há plano fora da janela; riscado = só dia; esbatido = terminada. Ao abrir a linha: Gantt detalhado (uma linha por ordem e fase, segmentos por turno/batch, fins-de-semana sombreados) e ⚙ para simular essa ordem. |
 | Em risco | prazo já passou e não concluída · fim previsto depois do prazo · sem planeamento com prazo a ≤ 14 dias. |
 | Pesquisa e ordenação | **Procurar em tudo** = todas as colunas + OBS do Excel + OPs/máquinas/estados das ordens ligadas. **Filtro por coluna** (linha por baixo do cabeçalho): palavras sem acentos, todas têm de aparecer; datas aceitam `11/11` ou `2026-11-11` ou `qua`; colunas numéricas (Qt, Folga) aceitam `>100`, `<0`, `>=5`, `=10`. **Ordenar**: clicar no título de qualquer coluna (2.º clique inverte); vazios ficam sempre no fim; desempate pelo prazo. O CSV exporta o que está filtrado, na ordem do ecrã. |
 | Segurança | SheetJS 0.18.5 tem a CVE-2023-30533 (prototype pollution com ficheiro malicioso; corrigida na 0.19.3, que não está no npm). Risco aceite: só lê o Encomendas.xlsx interno, no browser de quem carrega. Trocar por 0.20.x de cdn.sheetjs.com quando a rede o permitir. |
+
+## Motores portados (base do Gantt e do simulador)
+
+Cada app calcula o próprio plano no browser (excepto DSL Talis, no servidor). O dashboard corre **cópias fiéis** desses agendadores sobre os dados que lê — não estima nada por conta própria. Cada porte foi validado **contra a própria app**, no separador da app, com os dados reais:
+
+| Unidade | Motor (origem) | Ficheiro | Validação (data) |
+|---|---|---|---|
+| VOCUS | `calcScheduleForWeek` em cadeia por máquina (PlannerCork) | `src/adaptadores/vocus_plano.js` | 329/329 ordens iguais (28/10/2026) |
+| DS100 | `computeDS100AllocAllWeeks` (PlannerCork) | `src/adaptadores/ds100_plano.js` | 423/423 (1.º e último dia) (29/10) |
+| Densidades | fecho de `calcScheduleForMachineRange` (index.html sha256 1563c014…) | `src/motores/densidades.js` | 222/222 (início, fim, segmentos, qtd/segmento; memória e `/api/state`); vista mensal 81/81 (29/10) |
+| DSL Talis | `server/scheduler.js` integral + `inicioManualDe` + parte "linhas" de `calcular()` | `src/motores/talis.js` | 60/60 em 9 campos vs `plano.linhas` de `/api/estado` (29/10) |
+| DSL | fecho de `scheduleLine` (index.html sha256 a446d16b…, = deploy) | `src/motores/dsl.js` | 861/861 nos 3 modos da app (`eff`, `efet`, `plan`) (29/10) |
+| WIM | `scheduleMaq` (Wash) + `scheduleInno` (Innocork, arranca no fim da Lavação + 2 h) + transcrição do cálculo de `renderMQPlan` (Make-up) (index.html sha256 1a3af96a…, = deploy) | `src/motores/wim.js` | Wash + Innocork 223/223; dia de Make-up 64/64 (29/10). As horas de Make-up não foram validadas: 0 de 64 lotes tinham máquina de Make-up atribuída — a app só define o **dia** (fim da Lavação + 1 dia útil). |
+
+PureCork não tem motor (fora do âmbito, 29/10). Os ficheiros em `src/motores/` são gerados a partir do código das apps (extracção por AST do fecho transitivo das funções) — **não editar à mão**: se uma app mudar o agendador, voltar a extrair e validar. Se o sha256 do `index.html` publicado mudar, o porte pode ficar desactualizado.
+
+Fuso: os motores usam hora local; o servidor força `TZ=Europe/Lisbon`. DSL Talis guarda datas em UTC usado como hora de parede (`08:00Z` = 08:00 na fábrica) — tratado como tal (o adaptador antigo convertia de fuso e mostrava +1 h no horário de verão; corrigido na v19).
+
+## Simulador (separador "Simulador")
+
+Responde a "se o cliente mudar a data ou a quantidade, ou se uma máquina parar, que outras encomendas são afectadas?".
+
+| | |
+|---|---|
+| Como funciona | `POST /api/sim {alteracoes:[…]}`: o servidor copia os dados lidos de cada unidade alterada, aplica as alterações, corre o motor da app e compara com o plano base. **Nunca escreve nas apps.** |
+| Alterações | **Quantidade** (campo nativo: Densidades `qtdEntrada` rolhas · DSL `qtd` milheiros · Talis `qtd` un. · WIM `qtd` rolhas · VOCUS `qc` · DS100 `qtEntrada` rolhas) · **Mover / antecipar** (para um dia — início ou fim do dia, opcionalmente noutra máquina — ou para antes de outra ordem) · **Forçar início** (dia + hora, como o início manual da app) · **Capacidade** (ritmo % de uma máquina ou paragem de dias inteiros). Várias alterações juntam-se num cenário e aplicam-se por ordem. |
+| Regras por unidade | VOCUS e DS100 planeiam por semana (mover = semana + posição). DS100 não tem hora: forçar início = semana do dia na posição correspondente. DSL Talis: a hora manual é um mínimo (a fila manda). Densidades: início manual é autoritário (a app não impede sobreposição). WIM: escolhe-se a fase (Wash ou Innocork); Make-up não se altera directamente (é Lavação + 1 dia útil); no Innocork a ordem movida fica com dia fixo e a sequência fina por batch (`i_bseq`) dessa ordem é ignorada. Ritmo: Densidades/DSL `krH`, Talis `capacidade`, VOCUS OEE da máquina, DS100 capacidade diária, WIM tempos de ciclo. |
+| Resultado | ordens que mudam (início/fim antes → depois, Δ), Gantt antes/depois das máquinas afectadas, encomendas cujo fim previsto muda (folga antes → depois, **passa a estar em risco** / sai de risco). |
+| Limites | sem propagação entre secções (nenhuma app conhece as outras): o efeito noutra secção vê-se na encomenda (fim previsto = máximo das ordens ligadas), não no plano dessa secção. O cenário fica só no browser (localStorage). |
 
 ## Pesquisa global
 
@@ -117,7 +149,7 @@ Fundo preto por defeito (TV / sala de planeamento). Botão "Tema" no cabeçalho 
 npm install
 npm start                      # http://localhost:3000
 FIXTURES_DIR=fixtures npm start  # sem acesso às apps: dados de TESTE em fixtures/
-npm test                       # testes unitários (estados, datas, indicadores)
+npm test                       # testes unitários (estados, datas, indicadores, motores, simulador)
 ```
 
 Variáveis de ambiente (opcionais): `PORT`, `DATA_DIR`, `UPLOAD_TOKEN`, `FERIADO_MUNICIPAL` (defeito `01-20`), `FERIADOS_EXTRA`, `REFRESH_SEC` (defeito 60), `TIMEOUT_MS` (defeito 12000), `URL_WIM`, `URL_PLANNERCORK`, `URL_PURECORK`, `URL_DENSIDADES`, `URL_DSL`, `URL_DSL_TALIS`.
@@ -128,6 +160,7 @@ Variáveis de ambiente (opcionais): `PORT`, `DATA_DIR`, `UPLOAD_TOKEN`, `FERIADO
 - `GET /api/resumo` — indicadores por unidade (inclui `sem_op`, `sem_op_passado`, `sem_op_7d`), `ops_por_abrir` (ordenada), excepções (`alertas`), painel de máquinas (`unidades[].maquinas`, sem UI) e lista de ordens enriquecidas (`op_num`, `sem_op`, `sem_op_nivel`, `dias_plano`). `?so=kpi` omite a lista.
 - `GET /api/encomendas` — encomendas carregadas cruzadas com as ordens (estado, onde está, fim previsto, folga, risco, ordens ligadas). `POST /api/encomendas` — carrega as linhas (JSON; cabeçalho `x-upload-token` se `UPLOAD_TOKEN`).
 - `GET /api/procurar?q=…` — pesquisa global (todas as unidades, activas e fechadas; todas as palavras têm de aparecer).
+- `GET /api/sim/maquinas` — máquinas/linhas por unidade simulável. `GET /api/sim/procurar?q=…[&fonte=…][&id=…]` — ordens simuláveis com o plano base (barras). `POST /api/sim` — `{alteracoes:[{fonte, tipo:'qtd'|'mover'|'inicio'|'capacidade', ordem, fase, valor, data, hora, posicao, maquina, antes_de, modo:'ritmo'|'paragem', pct, de, ate}]}` → ordens afectadas, encomendas afectadas, Gantt antes/depois.
 - `POST /api/refresh` — força nova leitura das fontes.
 - `GET /health` — `{status, fontes_ok, fontes_total, ultima_agregacao}`.
 
@@ -148,7 +181,9 @@ src/agregador.js          ciclo de leitura, cache por fonte, resumo
 src/indicadores.js        regras dos KPIs (puro, testável)
 src/estados.js            normalização de estados
 src/util.js               datas (Lisboa, semana ISO), minutos, números
-src/adaptadores/*.js      um por app: converte o JSON de origem no modelo comum
+src/adaptadores/*.js      um por app: converte o JSON de origem no modelo comum (devolve também `bruto` = entrada do motor)
+src/motores/*.js          agendadores portados das apps (Densidades, DSL, DSL Talis, WIM) — gerados, não editar à mão
+src/simulador.js          planos/barras por ordem, alterações de cenário, impacto nas encomendas
 public/                   index.html, app.js, styles.css (JS puro, sem dependências)
 fixtures/                 dados de TESTE (regenerar com tools/gerar-fixtures.js)
 tools/harness.js          gera um script para validar um adaptador na consola do browser da própria app

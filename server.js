@@ -8,6 +8,9 @@
 //   GET /api/procurar?q=… — pesquisa global (todas as unidades, activas e fechadas)
 //   GET  /api/encomendas   — encomendas (Encomendas.xlsx carregado) cruzadas com as ordens dos planeamentos
 //   POST /api/encomendas   — carrega as linhas do Encomendas.xlsx (JSON, lido no browser); UPLOAD_TOKEN opcional
+//   GET  /api/sim/maquinas — máquinas/linhas simuláveis por unidade
+//   GET  /api/sim/procurar?q=… — ordens simuláveis (6 unidades com motor portado; PureCork fora)
+//   POST /api/sim          — simula um cenário {alteracoes:[…]} com os motores portados (nunca escreve nas apps)
 //   POST /api/refresh     — força nova leitura das fontes
 //   GET /health
 // Só faz GET às apps de origem. Não tem base de dados.
@@ -19,6 +22,7 @@ const compression = require('compression');
 const path = require('path');
 const agregador = require('./src/agregador');
 const encomendas = require('./src/encomendas');
+const simulador = require('./src/simulador');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,11 +53,38 @@ app.get('/api/procurar', (req, res) => {
     res.json({ q, hoje: r.hoje, n: resultados.length, resultados });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// Barras dos motores (Gantt). Se um motor falhar, o rastreio continua com as datas das apps.
+function barrasSeguras() {
+  try { return simulador.barrasPorOrdem(agregador.brutos()); }
+  catch (e) { console.error('[simulador] barras', e); return null; }
+}
+// Simulador de cenários — corre os motores portados sobre CÓPIAS dos dados lidos. Nunca escreve nas apps.
+app.get('/api/sim/maquinas', (_req, res) => {
+  try { res.json({ fontes: simulador.maquinas(agregador.brutos()) }); }
+  catch (e) { console.error('[api] sim/maquinas', e); res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/sim/procurar', (req, res) => {
+  try {
+    const r = agregador.resumo();
+    const q = String(req.query.q || '').trim();
+    res.json({ q, resultados: simulador.procurar(q, { brutos: agregador.brutos(), ordens: r.ordens }, { id: req.query.id ? String(req.query.id) : null, fonte: req.query.fonte ? String(req.query.fonte) : null }) });
+  } catch (e) { console.error('[api] sim/procurar', e); res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/sim', express.json({ limit: '200kb' }), (req, res) => {
+  try {
+    const r = agregador.resumo();
+    const enc = encomendas.cruzar(r.ordens, r.hoje, { barras: barrasSeguras() });
+    const t0 = Date.now();
+    const out = simulador.simular((req.body || {}).alteracoes, { brutos: agregador.brutos(), ordens: r.ordens, encomendas: enc, hoje: r.hoje });
+    out.ms = Date.now() - t0;
+    res.json({ ok: true, hoje: r.hoje, ...out });
+  } catch (e) { console.error('[api] sim', e); res.status(500).json({ ok: false, error: e.message }); }
+});
 // Encomendas (rastreio por Pedido_Item)
 app.get('/api/encomendas', (_req, res) => {
   try {
     const r = agregador.resumo();
-    const x = encomendas.cruzar(r.ordens, r.hoje);
+    const x = encomendas.cruzar(r.ordens, r.hoje, { barras: barrasSeguras() });
     if (!x) return res.json({ carregado: false, mensagem: 'Ainda não foi carregado nenhum Encomendas.xlsx', upload_protegido: !!process.env.UPLOAD_TOKEN });
     res.json({ carregado: true, upload_protegido: !!process.env.UPLOAD_TOKEN, ...x });
   } catch (e) { console.error('[api] encomendas', e); res.status(500).json({ ok: false, error: e.message }); }
