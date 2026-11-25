@@ -141,7 +141,7 @@ Quantidades em **unidades** (DSL e PureCork guardam milheiros → ×1000). Fuso 
 
 ## Tema
 
-Fundo cinzento-carvão (#1b1e22, cartões #24282d) por defeito — preto até à v19 (TV / sala de planeamento). Botão "Tema" no cabeçalho alterna para claro e guarda a escolha no browser (`localStorage dg_tema`); `?tema=claro` força o claro numa URL.
+Fundo **cinzento claro** por defeito desde a v21 (página `#e9ebee`, cartões brancos; texto secundário, azul e vermelho escurecidos para contraste ≥4,5:1). Botão "Tema" no cabeçalho alterna para escuro (cinzento-carvão `#1b1e22`) e guarda a escolha no browser (`localStorage dg_tema2`); `?tema=escuro` / `?tema=claro` forçam. Até à v20 o defeito era escuro (preto até à v19).
 
 ## Correr
 

@@ -2,7 +2,8 @@
    Dashboard Geral — urgências · tokens (claro/escuro) + layout
    ============================================================ */
 :root {
-  /* tema escuro por defeito (fundo cinzento-carvão, para TV e sala de planeamento; era preto até à v19); claro só com <html data-theme="light"> ou ?tema=claro */
+  /* tema escuro (fundo cinzento-carvão; era preto até à v19 e o defeito até à v20) — só com o botão Tema ou ?tema=escuro.
+     O defeito desde a v21 é o claro (cinzento claro): <html data-theme="light">, aplicado pelo script no <head>. */
   color-scheme: dark;
   --plano: #1b1e22;         /* fundo da página */
   --superficie: #24282d;    /* cartões */
@@ -24,10 +25,11 @@
 }
 :root[data-theme="light"] {
   color-scheme: light;
-  --plano: #f9f9f7; --superficie: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #898781;
-  --linha: #e1e0d9; --borda: rgba(11,11,11,0.10); --realce: #2a78d6; --em-processo: #eb6834;
+  /* tema por defeito desde a v21: fundo cinzento claro, cartões brancos; texto secundário/azul/vermelho com ≥4,5:1 */
+  --plano: #e9ebee; --superficie: #ffffff; --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #66645f;
+  --linha: #d9dce0; --borda: rgba(11,11,11,0.12); --realce: #1f68c4; --em-processo: #eb6834;
   --e-pre: #86b6ef; --e-aberto: #5598e7; --e-liberada: #2a78d6; --e-entregue: #1c5cab; --e-terminada: #898781; --e-espera: #c3c2b7;
-  --bom: #0ca30c; --aviso: #fab219; --serio: #ec835a; --critico: #d03b3b; --bom-ink: #006300; --amarelo-ink: #c98a00;
+  --bom: #0ca30c; --aviso: #fab219; --serio: #ec835a; --critico: #b8302f; --bom-ink: #006300; --amarelo-ink: #9a6a00;
   --critico-fundo: rgba(208,59,59,.07); --serio-fundo: rgba(236,131,90,.08); --aviso-fundo: rgba(250,178,25,.18);
   --sombra: 0 1px 2px rgba(0,0,0,0.04), 0 1px 1px rgba(0,0,0,0.03);
 }
@@ -173,9 +175,9 @@ main.a-carregar section { visibility: hidden; }
 .ocard .oc-lnk { text-decoration: none; font-size: 14px; }
 .ocard .oc-obs { color: var(--ink-3); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* cor fixa: hoje = vermelho · D+1 e D+2 = amarelo · ≥ D+3 azul · atrasadas vermelho esbatido */
-.ocard.hoje { border-left-color: var(--critico); border-color: var(--critico); background: var(--critico-fundo); }
+.ocard.hoje { border-left-color: var(--critico); border-color: var(--critico); background: linear-gradient(var(--critico-fundo), var(--critico-fundo)), var(--superficie); } /* tom sobre o cartão (não sobre o fundo da coluna) */
 .ocard.hoje .oc-dias { color: var(--critico); }
-.ocard.d1, .ocard.d2 { border-left-color: var(--aviso); border-color: var(--aviso); background: var(--aviso-fundo); }
+.ocard.d1, .ocard.d2 { border-left-color: var(--aviso); border-color: var(--aviso); background: linear-gradient(var(--aviso-fundo), var(--aviso-fundo)), var(--superficie); }
 .ocard.d1 .oc-dias, .ocard.d2 .oc-dias { color: var(--amarelo-ink); }
 .ocards .vazio-ok { color: var(--bom-ink); padding: 14px 4px; grid-column: 1 / -1; }
 #opsMais { margin-top: 6px; }
