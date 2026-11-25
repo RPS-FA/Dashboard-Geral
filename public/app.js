@@ -457,18 +457,9 @@ function renderEnc() {
       <td class="mg-td">${miniGantt(e)}</td>
       <td class="lnk">${aberto ? '▾' : '▸'}</td></tr>`;
     if (aberto) {
-      const ords = e.ordens.map(o => `<tr class="${o.em_curso ? 'proc' : (o.terminal ? 'feito' : '')}">
-          <td>${esc(o.unidade)}</td><td><b>${esc(o.op || '—')}</b>${o.sem_op ? ' <span class="tag semop">sem OP</span>' : ''}</td><td>${esc(o.maquina || '—')}${o.fase ? `<div class="origem">${esc(o.fase)}</div>` : ''}</td>
-          <td><span class="est ${o.estado}"><i></i>${esc(o.estado_origem || o.estado)}</span></td>
-          <td>${o.data_plano ? `${dPT(o.data_plano)}${o.hora_plano_ini ? ' ' + o.hora_plano_ini : ''}${o.data_fim_plano && (o.data_fim_plano !== o.data_plano || o.hora_plano_fim) ? ` → ${dPT(o.data_fim_plano)}${o.hora_plano_fim ? ' ' + o.hora_plano_fim : ''}` : ''}` : (o.semana_plano ? 'S' + o.semana_plano.split('-W')[1] : '—')}</td>
-          <td>${o.real_inicio || o.real_fim ? `${dhPT(o.real_inicio)} → ${dhPT(o.real_fim)}` : '—'}</td>
-          <td class="num">${o.qtd ? nR(o.qtd) : '—'}</td>
-          <td><span class="tag" title="${o.via.includes('obs') ? 'OP citada na OBS do Excel' : ''}${o.via === 'obs+pedido' ? ' e ' : ''}${o.via.includes('pedido') ? 'Pedido_Item no campo pedido/OP/obs da app' : ''}">${o.via === 'obs+pedido' ? 'pedido + OBS' : (o.via === 'obs' ? 'OBS Excel' : 'pedido')}</span></td>
-          <td class="lnk">${o.unidade !== 'PURECORK' && !o.terminal ? `<a href="#" class="sim-lnk" data-id="${esc(o.id)}" title="Simular uma alteração a esta ordem">⚙</a> ` : ''}<a href="${esc((unidade(o.unidade) || {}).url || '#')}" target="_blank" rel="noopener" title="abrir a app de ${esc(o.unidade)}">↗</a></td></tr>`).join('');
       const obs = Object.entries(e.obs || {}).map(([k, v]) => `<div><span class="origem">${esc(k)}:</span> ${esc(v)}</div>`).join('');
       h += `<tr class="enc-det"><td colspan="11">
-        ${e.ordens.some(o => (o.barras || []).length) ? ganttEncomenda(e) : ''}
-        ${e.ordens.length ? `<table class="enc-ords"><thead><tr><th>Unidade</th><th>OP</th><th>Máq. / linha</th><th>Estado na app</th><th>Plano (início → fim)</th><th>Real (início → fim)</th><th class="num">Qtd (un.)</th><th>Ligação</th><th></th></tr></thead><tbody>${ords}</tbody></table>` : '<div class="nota">Nenhuma ordem encontrada nos planeamentos com este Pedido_Item nem com as OPs citadas nas OBS.</div>'}
+        ${e.ordens.length ? percursoEncomenda(e) : '<div class="nota">Nenhuma ordem encontrada nos planeamentos com este Pedido_Item nem com as OPs citadas nas OBS.</div>'}
         ${e.ops_obs_nao_encontradas && e.ops_obs_nao_encontradas.length ? `<div class="nota">OPs citadas nas OBS e não encontradas em nenhuma app: ${esc(e.ops_obs_nao_encontradas.join(', '))} (ex.: ordens de corte 950…, MIX 160…, ou já removidas da app)</div>` : ''}
         ${obs ? `<div class="enc-obs">${obs}</div>` : ''}
       </td></tr>`;
@@ -615,24 +606,66 @@ function miniGantt(e) {
   const depois = bs.some(b => b.fim_d > ate) ? '<span class="mg-seta f" title="há plano depois da janela">›</span>' : '';
   return `<div class="mg">${mk}${html}${antes}${depois}</div>`;
 }
-// ---- Gantt detalhado de uma encomenda (uma linha por ordem e fase) ----
-function ganttEncomenda(e) {
-  const hoje = hojeData();
-  const prazo = e.prazo ? pData(e.prazo) : null; if (prazo) prazo.setHours(23, 59);
-  const linhas = [];
-  let mn = null, mx = null;
-  for (const o of e.ordens) for (const b of (o.barras || [])) {
-    const x = barraDe(b); if (!x.ini || !x.fim) continue;
-    if (!mn || x.ini < mn) mn = x.ini; if (!mx || x.fim > mx) mx = x.fim;
-    linhas.push({ rot: `<span class="uchip ${COR_UNID[o.unidade] || ''} cor">${esc(o.unidade)}</span> <b>${esc(o.op || '—')}</b> <span class="origem">${esc([b.fase_label, b.maquina].filter(Boolean).join(' · '))}</span>`, tit: `${o.unidade} · ${o.op || ''} · ${o.estado_origem || ''}`,
-      cls: o.terminal ? 'feito' : '', barras: [{ ...x, cls: `${COR_UNID[o.unidade] || ''}${o.terminal ? ' feito' : ''}${o.em_curso ? ' proc' : ''}${b.so_dia ? ' so-dia' : ''}`, txt: b.so_dia ? 'dia' : `${fmtDH(x.ini).slice(6)}–${fmtDH(x.fim).slice(6)}`, tit: titBarra(b, o.op) }] });
+// ---- Percurso da encomenda (linha do tempo vertical, mais recente/futuro em cima) ----
+const p2t = s => String(s || '').replace(' ', 'T').slice(0, 16);           // 'YYYY-MM-DD HH:mm' → 'YYYY-MM-DDTHH:mm'
+const quando = s => { if (!s) return '—'; const t = p2t(s); return `${diaSem(t)} ${dPT(t)}${t.length > 10 ? ' · ' + t.slice(11, 16) : ''}`; };
+function estadoTl(o) { return o.terminal ? 'feito' : (o.em_curso ? 'proc' : (o.estado === 'pre' ? 'espera' : 'plan')); }
+function planoTl(o) {
+  const bs = o.barras || [];
+  if (bs.length > 1 || (bs[0] && bs[0].fase)) return bs.map(b => `${b.fase_label ? b.fase_label + ' ' : ''}${b.so_dia ? 'dia ' + quando(b.ini.slice(0, 10)) : `${quando(b.ini)} → ${b.fim.slice(0, 10) === b.ini.slice(0, 10) ? b.fim.slice(11, 16) : quando(b.fim)}`}`).join('  ·  ');
+  if (bs.length) { const b = bs[0]; return b.so_dia ? `${quando(b.ini.slice(0, 10))}${b.fim.slice(0, 10) !== b.ini.slice(0, 10) ? ' → ' + quando(b.fim.slice(0, 10)) : ''}` : `${quando(b.ini)} → ${b.fim.slice(0, 10) === b.ini.slice(0, 10) ? b.fim.slice(11, 16) : quando(b.fim)}`; }
+  if (o.plano_granularidade === 'semana' && o.semana_plano) return 'semana ' + o.semana_plano.split('-W')[1];
+  if (!o.data_plano) return '';
+  const ini = o.data_plano + (o.hora_plano_ini ? 'T' + o.hora_plano_ini : ''), fim = o.data_fim_plano ? o.data_fim_plano + (o.hora_plano_fim ? 'T' + o.hora_plano_fim : '') : '';
+  return fim && fim !== ini ? `${quando(ini)} → ${quando(fim)}` : quando(ini);
+}
+// chave de ordenação (descendente): o que falta acontecer fica sempre acima da linha "hoje", o que já terminou abaixo.
+// terminada → fim real (ou plano); em processo → agora (logo acima de "hoje"); planeada → início previsto, nunca antes de agora
+const agoraTl = () => p2t(new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString());
+const inicioPlanTl = o => o.plano_ini || (o.data_plano ? o.data_plano + (o.hora_plano_ini ? 'T' + o.hora_plano_ini : '') : '');
+function chaveTl(o) {
+  const st = estadoTl(o); const agora = agoraTl();
+  if (st === 'feito') return p2t(o.real_fim) || o.plano_fim || o.data_fim_plano || p2t(o.real_inicio) || o.data_plano || '';
+  if (st === 'proc') return agora + 'a';
+  const ini = inicioPlanTl(o);
+  if (!ini) return '';
+  return ini > agora ? ini : agora + 'b';   // início planeado já passou e não arrancou: fica logo acima de "hoje"
+}
+function percursoEncomenda(e) {
+  const agora = agoraTl();
+  const itens = e.ordens.map(o => ({ k: chaveTl(o), o }));
+  if (e.prazo) itens.push({ k: e.prazo + 'T23:59', prazo: true });
+  itens.sort((a, b) => (b.k || '').localeCompare(a.k || '') || (a.prazo ? -1 : 1));   // sem data vai para o fim
+  const semData = itens.filter(x => !x.k); const comData = itens.filter(x => x.k);
+  const activasDepoisPrazo = e.prazo && e.ordens.some(o => !o.terminal && chaveTl(o) > e.prazo + 'T23:59');
+  const li = [];
+  let hojePosto = false;
+  const marcaHoje = () => `<li class="tl-hoje"><span>hoje · ${diaSem(agora)} ${dPT(agora)} ${agora.slice(11, 16)}</span></li>`;
+  for (const x of [...comData, ...semData]) {
+    if (!hojePosto && (!x.k || x.k <= agora)) { li.push(marcaHoje()); hojePosto = true; }   // linha "hoje" entre o futuro e o passado
+    if (x.prazo) {
+      const ok = e.estado === 'concluida' && !e.risco;
+      const cls = ok ? 'ok' : ((e.risco || activasDepoisPrazo) ? 'mau' : '');
+      li.push(`<li class="tl-i"><i class="tl-dot prazo ${cls}"></i><div>
+        <div class="tl-t1">${e.prazo_tipo === 'desejada' ? 'Data desejada de remessa' : 'Prazo prometido ao cliente'}</div>
+        <div class="tl-t2">${quando(e.prazo)}${e.fim_previsto ? ` · fim previsto ${quando(e.fim_previsto + (e.fim_previsto_hora ? 'T' + e.fim_previsto_hora : ''))}` : ''}${e.folga_dias != null ? ` · <b class="${e.folga_dias < 0 ? 'atr-prazo' : 'bom'}">folga ${folgaTxt(e)}</b>` : ''}</div>
+        ${e.risco ? `<div class="tl-t3 atr-prazo">${esc(RISCO_TXT[e.risco] || e.risco)}</div>` : ''}</div></li>`);
+      continue;
+    }
+    const o = x.o; const st = estadoTl(o); const plano = planoTl(o);
+    const atrasada = st !== 'feito' && st !== 'proc' && inicioPlanTl(o) && inicioPlanTl(o) < agora;
+    const linhaData = st === 'feito'
+      ? (o.real_inicio || o.real_fim ? `real ${quando(o.real_inicio)} → ${quando(o.real_fim)}` : (plano ? `plano ${plano}` : 'sem datas registadas'))
+      : (st === 'proc' ? `começou ${quando(o.real_inicio)}${o.plano_fim ? (o.plano_fim < agora ? ` · fim planeado ${quando(o.plano_fim)} <span class="atr-prazo">(já passou)</span>` : ` · fim previsto ${quando(o.plano_fim)}`) : ''}` : (plano ? `previsto ${plano}` : 'sem data planeada'));
+    const via = o.via === 'obs+pedido' ? 'pedido + OBS' : (o.via === 'obs' ? 'OBS do Excel' : 'pedido');
+    li.push(`<li class="tl-i ${st}"><i class="tl-dot ${st}"></i><div>
+      <div class="tl-t1"><span class="uchip ${COR_UNID[o.unidade] || ''} cor">${esc(o.unidade)}</span> ${esc(DADOS?.estados?.[o.estado] || o.estado)} <span class="tl-op">${esc(o.op || '—')}</span>${o.sem_op ? ' <span class="tag semop">sem OP</span>' : ''}${atrasada ? ' <span class="tag tl-atr" title="o início planeado já passou e a ordem ainda não arrancou">não arrancou</span>' : ''}</div>
+      <div class="tl-t2">${linhaData}${st === 'feito' && plano && (o.real_inicio || o.real_fim) ? ` <span class="origem">(plano ${plano})</span>` : ''}</div>
+      <div class="tl-t3">${esc([o.maquina, o.fase, o.estado_origem && o.estado_origem !== (DADOS?.estados?.[o.estado] || '') ? 'app: ' + o.estado_origem : '', o.qtd ? nR(o.qtd) + ' un.' : ''].filter(Boolean).join(' · '))} · <span class="tag" title="${o.via.includes('obs') ? 'OP citada na OBS do Excel' : ''}${o.via === 'obs+pedido' ? ' e ' : ''}${o.via.includes('pedido') ? 'Pedido_Item no campo pedido/OP/obs da app' : ''}">${via}</span>
+        ${o.unidade !== 'PURECORK' && !o.terminal ? `<a href="#" class="sim-lnk" data-id="${esc(o.id)}" title="Simular uma alteração a esta ordem">⚙ simular</a>` : ''} <a href="${esc((unidade(o.unidade) || {}).url || '#')}" target="_blank" rel="noopener" title="abrir a app de ${esc(o.unidade)}">abrir app ↗</a></div></div></li>`);
   }
-  if (!linhas.length) return '';
-  let de = new Date(Math.min(mn, hoje)); de.setHours(0, 0, 0, 0); de.setDate(de.getDate() - 1);
-  let ate = new Date(Math.max(mx, prazo || 0, hoje)); ate.setHours(0, 0, 0, 0); ate.setDate(ate.getDate() + 2);
-  if ((ate - de) / 864e5 > 63) { de = new Date(Math.max(de, new Date(hoje.getTime() - 7 * 864e5))); de.setHours(0, 0, 0, 0); if ((ate - de) / 864e5 > 63) ate = new Date(de.getTime() + 63 * 864e5); }
-  const marcas = [{ d: new Date(), cls: 'hoje', tit: 'agora' }]; if (prazo) marcas.push({ d: prazo, cls: 'prazo', tit: `prazo ${e.prazo_tipo || ''} ${dPT(e.prazo)}` });
-  return `<div class="enc-gantt">${ganttHTML({ de, ate, cab: '<span class="nota">plano dos motores das apps</span>', linhas, marcas })}</div>`;
+  if (!hojePosto) li.push(marcaHoje());
+  return `<div class="tl-cab">Percurso da encomenda <span class="nota">mais recente / próximo em cima · datas reais quando a app as tem, senão o plano dos motores das apps</span></div><ol class="tl">${li.join('')}</ol>`;
 }
 
 // ============================================================

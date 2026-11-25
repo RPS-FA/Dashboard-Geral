@@ -356,7 +356,6 @@ body.tv #encTab thead tr.filtros-col { display: none; }
 .g-lin.g-antes { border-bottom: 0; }
 .g-lin.g-antes .g-pista, .g-lin.g-depois .g-pista { min-height: 22px; }
 .g-rot-dep { color: var(--ink-3); padding-left: 64px; }
-.enc-gantt { margin-bottom: 10px; }
 
 /* ============================================================
    Simulador
@@ -412,3 +411,31 @@ body.tv #encTab thead tr.filtros-col { display: none; }
 @media (max-width: 980px) { .sim-grid { grid-template-columns: 1fr; } .sim-painel { position: static; } .g-lin { grid-template-columns: 130px 1fr; } }
 body.tv .vistas [data-vista="sim"] { display: none; }
 .sim-form [hidden], .sim-bloco [hidden] { display: none !important; }
+
+/* ============================================================
+   Percurso da encomenda (linha do tempo vertical, v23)
+   ============================================================ */
+.tl-cab { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); margin: 4px 0 10px; }
+.tl-cab .nota { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 6px; }
+.tl { list-style: none; margin: 0 0 10px; padding: 0; max-width: 1000px; }
+.tl-i { display: grid; grid-template-columns: 24px 1fr; column-gap: 12px; position: relative; padding-bottom: 16px; }
+.tl-i::before { content: ''; position: absolute; left: 11px; top: 18px; bottom: -4px; width: 2px; background: var(--linha); }
+.tl > li.tl-i:last-child::before { display: none; }
+.tl-dot { width: 14px; height: 14px; border-radius: 50%; margin: 4px 0 0 5px; background: var(--ink-3); position: relative; z-index: 1; display: block; }
+.tl-dot.feito { background: var(--bom); }
+.tl-dot.proc { background: var(--em-processo); box-shadow: 0 0 0 4px color-mix(in srgb, var(--em-processo) 25%, transparent); }
+.tl-dot.plan { background: var(--realce); }
+.tl-dot.espera { background: var(--ink-3); }
+.tl-dot.prazo { background: var(--superficie); border: 3px solid var(--ink-3); width: 16px; height: 16px; margin-left: 4px; }
+.tl-dot.prazo.mau { border-color: var(--critico); }
+.tl-dot.prazo.ok { border-color: var(--bom); }
+.tl-t1 { font-size: 16px; font-weight: 600; color: var(--ink); line-height: 1.3; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tl-op { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tl-t2 { font-size: 13.5px; color: var(--ink-2); margin-top: 2px; }
+.tl-t3 { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
+.tl-t3 a { margin-left: 8px; text-decoration: none; }
+.tl-i.feito .tl-t1 { color: var(--ink-2); }
+.tl-hoje { position: relative; margin: 2px 0 14px; padding-left: 36px; }
+.tl-hoje::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1.5px dashed var(--realce); }
+.tl-hoje span { position: relative; background: var(--plano); color: var(--realce); font-size: 11.5px; font-weight: 700; padding: 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+.tag.tl-atr { color: var(--critico); border-color: var(--critico); background: transparent; font-weight: 600; }
