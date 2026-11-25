@@ -139,6 +139,10 @@ Alcance = o que cada app guarda: WIM, VOCUS, DS100, PureCork, Densidades e DSL d
 
 Quantidades em **unidades** (DSL e PureCork guardam milheiros → ×1000). Fuso horário: Europe/Lisbon — `server.js` força `process.env.TZ` porque o plano VOCUS usa `Date` local (como a app).
 
+## Regras no ecrã
+
+O rodapé "Regras" foi retirado do ecrã a pedido (25/11/2026, v22): as regras estão neste README (OP por abrir, Encomendas, Motores portados, Simulador).
+
 ## Tema
 
 Fundo **cinzento claro** por defeito desde a v21 (página `#e9ebee`, cartões brancos; texto secundário, azul e vermelho escurecidos para contraste ≥4,5:1). Botão "Tema" no cabeçalho alterna para escuro (cinzento-carvão `#1b1e22`) e guarda a escolha no browser (`localStorage dg_tema2`); `?tema=escuro` / `?tema=claro` forçam. Até à v20 o defeito era escuro (preto até à v19).
