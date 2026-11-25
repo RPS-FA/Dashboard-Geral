@@ -2,21 +2,21 @@
    Dashboard Geral — urgências · tokens (claro/escuro) + layout
    ============================================================ */
 :root {
-  /* tema escuro por defeito (fundo preto, para TV e sala de planeamento); claro só com <html data-theme="light"> ou ?tema=claro */
+  /* tema escuro por defeito (fundo cinzento-carvão, para TV e sala de planeamento; era preto até à v19); claro só com <html data-theme="light"> ou ?tema=claro */
   color-scheme: dark;
-  --plano: #000000;         /* fundo da página */
-  --superficie: #161616;    /* cartões */
+  --plano: #1b1e22;         /* fundo da página */
+  --superficie: #24282d;    /* cartões */
   --ink: #f0efec;
   --ink-2: #c3c2b7;
-  --ink-3: #8f8d87;
-  --linha: #2c2c2a;
+  --ink-3: #9a9892;        /* ≥4.5:1 sobre os cartões */
+  --linha: #353a40;
   --borda: rgba(255,255,255,0.12);
-  --realce: #3987e5;        /* azul — acção / selecção */
+  --realce: #4f97ec;        /* azul — acção / selecção */
   --em-processo: #ff7a45;   /* ênfase: o que está a ser processado */
   /* rampa ordinal (azul) para o ciclo das ordens activas */
   --e-pre: #2d6cc4; --e-aberto: #4a8fe0; --e-liberada: #6aa6ee; --e-entregue: #9cc3f5; --e-terminada: #8f8d87; --e-espera: #52514e;
   /* estado (fixo) */
-  --bom: #2ec22e; --aviso: #fab219; --serio: #f08a5c; --critico: #e34a4a;
+  --bom: #2ec22e; --aviso: #fab219; --serio: #f08a5c; --critico: #f06060;
   --bom-ink: #3fd13f;
   --amarelo-ink: #fab219;
   --critico-fundo: rgba(227,74,74,.20); --serio-fundo: rgba(240,138,92,.16); --aviso-fundo: rgba(250,178,25,.22);
@@ -301,7 +301,7 @@ body.tv #encTab thead tr.filtros-col { display: none; }
 /* ============================================================
    Gantt (motores das apps) · cores por unidade (categóricas, fixas nos dois temas)
    ============================================================ */
-:root { --u-wim: #3987e5; --u-dsl: #22a99a; --u-talis: #9073e6; --u-dens: #d99a1e; --u-vocus: #e0679f; --u-ds100: #5eb83a; --u-pure: #8f8d87; --g-fds: rgba(255,255,255,.035); --g-antes: #4a4945; }
+:root { --u-wim: #3987e5; --u-dsl: #22a99a; --u-talis: #9073e6; --u-dens: #d99a1e; --u-vocus: #e0679f; --u-ds100: #5eb83a; --u-pure: #8f8d87; --g-fds: rgba(255,255,255,.04); --g-antes: #565b62; }
 :root[data-theme="light"] { --u-wim: #2a78d6; --u-dsl: #13897d; --u-talis: #7556d6; --u-dens: #c98a00; --u-vocus: #c94d86; --u-ds100: #3f9a1e; --u-pure: #898781; --g-fds: rgba(0,0,0,.035); --g-antes: #c9c8c1; }
 .u-wim { --u: var(--u-wim); } .u-dsl { --u: var(--u-dsl); } .u-talis { --u: var(--u-talis); } .u-dens { --u: var(--u-dens); } .u-vocus { --u: var(--u-vocus); } .u-ds100 { --u: var(--u-ds100); } .u-pure { --u: var(--u-pure); }
 .uchip.cor { background: transparent; color: var(--u, var(--ink-2)); border-color: var(--u, var(--borda)); cursor: default; }

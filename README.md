@@ -141,7 +141,7 @@ Quantidades em **unidades** (DSL e PureCork guardam milheiros → ×1000). Fuso 
 
 ## Tema
 
-Fundo preto por defeito (TV / sala de planeamento). Botão "Tema" no cabeçalho alterna para claro e guarda a escolha no browser (`localStorage dg_tema`); `?tema=claro` força o claro numa URL.
+Fundo cinzento-carvão (#1b1e22, cartões #24282d) por defeito — preto até à v19 (TV / sala de planeamento). Botão "Tema" no cabeçalho alterna para claro e guarda a escolha no browser (`localStorage dg_tema`); `?tema=claro` força o claro numa URL.
 
 ## Correr
 
